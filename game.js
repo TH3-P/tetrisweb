@@ -1,9 +1,12 @@
 // ==========================================
-// CONFIGURACIÓN DE LA API Y ENTORNO DE DEPLIEGUE
+// CONFIGURACIÓN DE LA API Y ENTORNO CROSS-ORIGIN
 // ==========================================
 
-// 1. Para probar localmente en XAMPP:
-const API_URL = 'https://filemanager.ai/new3/index.php?u=if0_42689020&p=Nj4HVAwJEQoNBw&home=%2Fhtdocs';
+// Reemplaza esta URL con la dirección real de tu servidor PHP (ejemplo en InfinityFree)
+const API_URL = 'https://generic-game.infinityfreeapp.com/api.php';
+
+// Para pruebas locales en XAMPP, puedes usar:
+// const API_URL = 'api.php';
 
 let currentUser = null;
 let dropCounter = 0;
@@ -12,7 +15,7 @@ let lastTime = 0;
 let isPaused = false;
 let gameOver = false;
 
-// Configuración de canvas y contexto
+// Configuración de canvas y contexto del Tetris
 const canvas = document.getElementById('tetris');
 const context = canvas.getContext('2d');
 context.scale(20, 20);
@@ -241,7 +244,7 @@ function togglePause() {
 }
 
 // ==========================================
-// CONEXIÓN CON LA API PHP (MANEJO DE ERRORES Y MENSAJES)
+// COMUNICACIÓN API CON CREDENTIALS: 'INCLUDE' (CORS MULTI-DOMINIO)
 // ==========================================
 
 function showMessage(msg, isError = false) {
@@ -269,6 +272,7 @@ async function register() {
         const res = await fetch(`${API_URL}?action=register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', // <--- Envía/recibe cookies entre dominios
             body: JSON.stringify({ username, password })
         });
         const data = await res.json();
@@ -302,6 +306,7 @@ async function login() {
         const res = await fetch(`${API_URL}?action=login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', // <--- Mantiene la sesión en cookies cross-site
             body: JSON.stringify({ username, password })
         });
         const data = await res.json();
@@ -323,7 +328,10 @@ async function login() {
 
 async function checkSession() {
     try {
-        const res = await fetch(`${API_URL}?action=check_session`);
+        const res = await fetch(`${API_URL}?action=check_session`, {
+            method: 'GET',
+            credentials: 'include' // <--- Verifica la sesión enviando la cookie
+        });
         const data = await res.json();
         if (data.loggedIn) {
             currentUser = data.username;
@@ -338,7 +346,10 @@ async function checkSession() {
 
 async function logout() {
     try {
-        await fetch(`${API_URL}?action=logout`);
+        await fetch(`${API_URL}?action=logout`, {
+            method: 'GET',
+            credentials: 'include' // <--- Elimina la sesión activa en la cookie
+        });
     } catch (e) {}
     currentUser = null;
     updateUI(false);
@@ -366,6 +377,7 @@ async function saveScore(finalScore) {
         await fetch(`${API_URL}?action=save_score`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', // <--- Adjunta la sesión activa para vincular la puntuación al usuario
             body: JSON.stringify({ score: finalScore })
         });
         fetchLeaderboard();
@@ -379,7 +391,10 @@ async function fetchLeaderboard() {
     if (!leaderboardBody) return;
 
     try {
-        const res = await fetch(`${API_URL}?action=get_scores`);
+        const res = await fetch(`${API_URL}?action=get_scores`, {
+            method: 'GET',
+            credentials: 'include'
+        });
         const scores = await res.json();
 
         leaderboardBody.innerHTML = '';
@@ -396,7 +411,7 @@ async function fetchLeaderboard() {
 }
 
 // ==========================================
-// CONTROLES Y EVENTOS
+// CONTROLES Y EVENTOS AL CARGAR
 // ==========================================
 
 document.addEventListener('keydown', event => {
