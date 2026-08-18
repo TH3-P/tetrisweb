@@ -9,23 +9,107 @@ async function checkSession() {
 }
 
 async function register() {
-    // ...
-    const res = await fetch(`${API_URL}?action=register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-    });
-    // ...
+    console.log("Intento de registro...");
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+
+    if (!usernameInput || !passwordInput) {
+        alert("Error: No se encontraron los campos de entrada de texto.");
+        return;
+    }
+
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value.trim();
+
+    if (!username || !password) {
+        alert("Por favor ingresa un usuario y una contraseña.");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_URL}?action=register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        alert(data.message || data.error);
+    } catch (err) {
+        console.error("Error en registro:", err);
+        alert("No se pudo conectar con el servidor backend (api.php).");
+    }
 }
 
 async function login() {
-    // ...
-    const res = await fetch(`${API_URL}?action=login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-    });
-    // ...
+    console.log("Intento de inicio de sesión...");
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value.trim();
+
+    if (!username || !password) {
+        alert("Por favor ingresa tu usuario y contraseña.");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_URL}?action=login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+
+        if (data.username) {
+            currentUser = data.username;
+            updateUI(true);
+            alert(`¡Bienvenido de nuevo, ${currentUser}!`);
+        } else {
+            alert(data.error || "Error al iniciar sesión.");
+        }
+    } catch (err) {
+        console.error("Error en login:", err);
+        alert("No se pudo conectar con el servidor backend (api.php).");
+    }
+}
+
+async function checkSession() {
+    try {
+        const res = await fetch(`${API_URL}?action=check_session`);
+        const data = await res.json();
+        if (data.loggedIn) {
+            currentUser = data.username;
+            updateUI(true);
+        } else {
+            updateUI(false);
+        }
+    } catch (e) {
+        console.log("Sesión no iniciada o backend offline.");
+    }
+}
+
+function updateUI(isLoggedIn) {
+    const authPanel = document.getElementById('auth-panel');
+    const userPanel = document.getElementById('user-panel');
+    const userDisplay = document.getElementById('user-display');
+
+    if (isLoggedIn) {
+        if (authPanel) authPanel.style.display = 'none';
+        if (userPanel) userPanel.style.display = 'block';
+        if (userDisplay) userDisplay.innerText = currentUser;
+    } else {
+        if (authPanel) authPanel.style.display = 'flex';
+        if (userPanel) userPanel.style.display = 'none';
+    }
+}
+
+async function logout() {
+    try {
+        await fetch(`${API_URL}?action=logout`);
+    } catch(e){}
+    currentUser = null;
+    updateUI(false);
 }
 
 async function saveScore(finalScore) {
