@@ -415,6 +415,111 @@ function update(time = 0) {
         return;
     }
 
+    // Función para mostrar mensajes en pantalla en lugar de pop-ups / alert()
+function showMessage(msg, isError = false) {
+    const msgDiv = document.getElementById('auth-message');
+    if (msgDiv) {
+        msgDiv.style.color = isError ? '#FF5555' : '#0DFF72'; // Rojo para error, Verde para éxito
+        msgDiv.innerText = msg;
+
+        // Limpia el mensaje automáticamente después de 4 segundos
+        setTimeout(() => {
+            msgDiv.innerText = '';
+        }, 4000);
+    }
+}
+
+// --- FUNCIONES DE REGISTRO Y LOGIN SIN ALERTS ---
+
+async function register() {
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value.trim();
+
+    if (!username || !password) {
+        showMessage("Por favor ingresa usuario y contraseña", true);
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_URL}?action=register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+
+        if (data.error) {
+            showMessage(data.error, true);
+        } else {
+            showMessage(data.message || "¡Usuario registrado! Ya puedes iniciar sesión.");
+            usernameInput.value = '';
+            passwordInput.value = '';
+        }
+    } catch (err) {
+        console.error("Error en registro:", err);
+        showMessage("No se pudo conectar con el servidor (api.php)", true);
+    }
+}
+
+async function login() {
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value.trim();
+
+    if (!username || !password) {
+        showMessage("Ingresa tu usuario y contraseña", true);
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_URL}?action=login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+
+        if (data.username) {
+            currentUser = data.username;
+            updateUI(true);
+            usernameInput.value = '';
+            passwordInput.value = '';
+        } else {
+            showMessage(data.error || "Usuario o contraseña incorrectos", true);
+        }
+    } catch (err) {
+        console.error("Error en login:", err);
+        showMessage("No se pudo conectar con el servidor (api.php)", true);
+    }
+}
+
+// --- EVENTOS AL CARGAR LA PÁGINA ---
+
+document.addEventListener('DOMContentLoaded', () => {
+    const btnLogin = document.getElementById('btn-login');
+    const btnRegister = document.getElementById('btn-register');
+
+    if (btnLogin) {
+        btnLogin.addEventListener('click', () => {
+            login();
+        });
+    }
+
+    if (btnRegister) {
+        btnRegister.addEventListener('click', () => {
+            register();
+        });
+    }
+
+    // Verificar si ya hay una sesión activa al entrar
+    checkSession();
+});
+
     const deltaTime = time - lastTime;
     lastTime = time;
     dropCounter += deltaTime;
