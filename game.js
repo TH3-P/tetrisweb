@@ -1,44 +1,32 @@
 // ==========================================
-// CONFIGURACIÓN DE LA API Y ESTADO DEL JUEGO
+// CONFIGURACIÓN DE LA API Y ENTORNO DE DEPLIEGUE
 // ==========================================
 
-// Para probar en XAMPP localmente. (Si usas un servidor externo, pon la URL completa aquí)
-const API_URL = 'https://filemanager.ai/new3/index.php?u=if0_42689020&p=Nj4HVAwJEQoNBw&home=%2Fhtdocs'; 
+// 1. Para probar localmente en XAMPP:
+const API_URL = 'https://filemanager.ai/new3/index.php?u=if0_42689020&p=Nj4HVAwJEQoNBw&home=%2Fhtdocs';
 
 let currentUser = null;
-let score = 0;
-let level = 1;
-let linesClearedTotal = 0;
-let isPaused = false;
-let gameOver = false;
 let dropCounter = 0;
 let dropInterval = 1000;
 let lastTime = 0;
-let requestId = null;
+let isPaused = false;
+let gameOver = false;
 
-// Configuración de tableros
+// Configuración de canvas y contexto
 const canvas = document.getElementById('tetris');
 const context = canvas.getContext('2d');
-context.scale(20, 20); // Matriz de 12x20 con bloques de 20px
+context.scale(20, 20);
 
 const canvasNext = document.getElementById('next');
 const contextNext = canvasNext.getContext('2d');
 contextNext.scale(20, 20);
 
-// Tablero principal de 12 columnas x 20 filas
 const arena = createMatrix(12, 20);
 
-// Piezas del Tetris (Tetriminos) y sus colores
 const PIECES = 'TJLOSZI';
 const COLORS = [
     null,
-    '#FF0D72', // T - Rosado
-    '#0DC2FF', // J - Celeste
-    '#0DFF72', // L - Verde
-    '#F538FF', // O - Violeta
-    '#FF8E0D', // S - Naranja
-    '#FFE135', // Z - Amarillo
-    '#3877FF'  // I - Azul
+    '#FF0D72', '#0DC2FF', '#0DFF72', '#F538FF', '#FF8E0D', '#FFE135', '#3877FF'
 ];
 
 const player = {
@@ -51,7 +39,7 @@ const player = {
 };
 
 // ==========================================
-// FUNCIONES DEL MOTOR DEL TETRIS
+// MOTOR Y LÓGICA DEL JUEGO (TETRIS)
 // ==========================================
 
 function createMatrix(w, h) {
@@ -63,49 +51,13 @@ function createMatrix(w, h) {
 }
 
 function createPiece(type) {
-    if (type === 'I') {
-        return [
-            [0, 1, 0, 0],
-            [0, 1, 0, 0],
-            [0, 1, 0, 0],
-            [0, 1, 0, 0],
-        ];
-    } else if (type === 'L') {
-        return [
-            [0, 3, 0],
-            [0, 3, 0],
-            [0, 3, 3],
-        ];
-    } else if (type === 'J') {
-        return [
-            [0, 2, 0],
-            [0, 2, 0],
-            [2, 2, 0],
-        ];
-    } else if (type === 'O') {
-        return [
-            [4, 4],
-            [4, 4],
-        ];
-    } else if (type === 'Z') {
-        return [
-            [6, 6, 0],
-            [0, 6, 6],
-            [0, 0, 0],
-        ];
-    } else if (type === 'S') {
-        return [
-            [0, 5, 5],
-            [5, 5, 0],
-            [0, 0, 0],
-        ];
-    } else if (type === 'T') {
-        return [
-            [0, 1, 0],
-            [1, 1, 1],
-            [0, 0, 0],
-        ];
-    }
+    if (type === 'I') return [[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]];
+    if (type === 'L') return [[0,3,0],[0,3,0],[0,3,3]];
+    if (type === 'J') return [[0,2,0],[0,2,0],[2,2,0]];
+    if (type === 'O') return [[4,4],[4,4]];
+    if (type === 'Z') return [[6,6,0],[0,6,6],[0,0,0]];
+    if (type === 'S') return [[0,5,5],[5,5,0],[0,0,0]];
+    if (type === 'T') return [[0,1,0],[1,1,1],[0,0,0]];
 }
 
 function drawMatrix(matrix, offset, ctx = context) {
@@ -137,7 +89,6 @@ function drawNextPiece() {
 function draw() {
     context.fillStyle = '#000';
     context.fillRect(0, 0, canvas.width, canvas.height);
-
     drawMatrix(arena, { x: 0, y: 0 });
     drawMatrix(player.matrix, player.pos);
 }
@@ -169,9 +120,7 @@ function arenaSweep() {
     let rowCount = 1;
     outer: for (let y = arena.length - 1; y >= 0; --y) {
         for (let x = 0; x < arena[y].length; ++x) {
-            if (arena[y][x] === 0) {
-                continue outer;
-            }
+            if (arena[y][x] === 0) continue outer;
         }
         const row = arena.splice(y, 1)[0].fill(0);
         arena.unshift(row);
@@ -250,11 +199,8 @@ function rotate(matrix, dir) {
             [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
         }
     }
-    if (dir > 0) {
-        matrix.forEach(row => row.reverse());
-    } else {
-        matrix.reverse();
-    }
+    if (dir > 0) matrix.forEach(row => row.reverse());
+    else matrix.reverse();
 }
 
 function update(time = 0) {
@@ -268,7 +214,7 @@ function update(time = 0) {
         }
         draw();
     }
-    requestId = requestAnimationFrame(update);
+    requestAnimationFrame(update);
 }
 
 function updateScoreDisplay() {
@@ -291,13 +237,11 @@ function resetGame() {
 function togglePause() {
     isPaused = !isPaused;
     const btn = document.getElementById('pause-btn');
-    if (btn) {
-        btn.innerText = isPaused ? "Reanudar (P)" : "Pausar (P)";
-    }
+    if (btn) btn.innerText = isPaused ? "Reanudar (P)" : "Pausar (P)";
 }
 
 // ==========================================
-// FUNCIONES DE AUTENTICACIÓN Y MENSAJES (SISTEMA DE TEXTO)
+// CONEXIÓN CON LA API PHP (MANEJO DE ERRORES Y MENSAJES)
 // ==========================================
 
 function showMessage(msg, isError = false) {
@@ -305,9 +249,7 @@ function showMessage(msg, isError = false) {
     if (msgDiv) {
         msgDiv.style.color = isError ? '#FF5555' : '#0DFF72';
         msgDiv.innerText = msg;
-        setTimeout(() => {
-            msgDiv.innerText = '';
-        }, 4000);
+        setTimeout(() => { msgDiv.innerText = ''; }, 4000);
     }
 }
 
@@ -334,13 +276,13 @@ async function register() {
         if (data.error) {
             showMessage(data.error, true);
         } else {
-            showMessage(data.message || "¡Registrado con éxito!");
+            showMessage(data.message || "¡Usuario registrado!");
             if (usernameInput) usernameInput.value = '';
             if (passwordInput) passwordInput.value = '';
         }
     } catch (err) {
         console.error("Error en registro:", err);
-        showMessage("Error de conexión con el servidor (api.php)", true);
+        showMessage("Error de conexión con el servidor API", true);
     }
 }
 
@@ -375,7 +317,7 @@ async function login() {
         }
     } catch (err) {
         console.error("Error en login:", err);
-        showMessage("Error de conexión con el servidor (api.php)", true);
+        showMessage("Error de conexión con el servidor API", true);
     }
 }
 
@@ -417,10 +359,6 @@ function updateUI(isLoggedIn) {
     }
 }
 
-// ==========================================
-// INTEGRACIÓN DE TABLA DE CLASIFICACIÓN (LEADERBOARD)
-// ==========================================
-
 async function saveScore(finalScore) {
     if (!currentUser || finalScore <= 0) return;
 
@@ -432,7 +370,7 @@ async function saveScore(finalScore) {
         });
         fetchLeaderboard();
     } catch (err) {
-        console.error("Error al guardar puntuación:", err);
+        console.error("Error guardando puntuación:", err);
     }
 }
 
@@ -453,46 +391,35 @@ async function fetchLeaderboard() {
             });
         }
     } catch (err) {
-        console.error("Error al obtener posiciones:", err);
+        console.error("Error obteniendo posiciones:", err);
     }
 }
 
 // ==========================================
-// CONTROLES DE TECLADO Y EVENTOS
+// CONTROLES Y EVENTOS
 // ==========================================
 
 document.addEventListener('keydown', event => {
-    if (event.keyCode === 37) { // Izquierda
-        playerMove(-1);
-    } else if (event.keyCode === 39) { // Derecha
-        playerMove(1);
-    } else if (event.keyCode === 40) { // Abajo
-        playerDrop();
-    } else if (event.keyCode === 38) { // Arriba (Rotar)
-        playerRotate(1);
-    } else if (event.keyCode === 80) { // Tecla P (Pausa)
-        togglePause();
-    }
+    if (event.keyCode === 37) playerMove(-1);
+    else if (event.keyCode === 39) playerMove(1);
+    else if (event.keyCode === 40) playerDrop();
+    else if (event.keyCode === 38) playerRotate(1);
+    else if (event.keyCode === 80) togglePause();
 });
 
-// Inicialización de escuchadores de eventos al cargar el DOM
 document.addEventListener('DOMContentLoaded', () => {
     const btnLogin = document.getElementById('btn-login');
     const btnRegister = document.getElementById('btn-register');
+    const btnLogout = document.getElementById('btn-logout');
+    const btnPause = document.getElementById('pause-btn');
 
-    if (btnLogin) {
-        btnLogin.addEventListener('click', login);
-    }
+    if (btnLogin) btnLogin.addEventListener('click', login);
+    if (btnRegister) btnRegister.addEventListener('click', register);
+    if (btnLogout) btnLogout.addEventListener('click', logout);
+    if (btnPause) btnPause.addEventListener('click', togglePause);
 
-    if (btnRegister) {
-        btnRegister.addEventListener('click', register);
-    }
-
-    // Cargar sesión inicial y tabla de posiciones
     checkSession();
     fetchLeaderboard();
-
-    // Iniciar bucle del juego
     playerReset();
     update();
 });
