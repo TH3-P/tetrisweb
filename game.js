@@ -438,3 +438,24 @@ checkSession();
 playerReset();
 fetchLeaderboard();
 update();
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("El script game.js se ha cargado correctamente.");
+
+    const btnLogin = document.getElementById('btn-login');
+    const btnRegister = document.getElementById('btn-register');
+
+    if (btnLogin) {
+        btnLogin.addEventListener('click', () => {
+            alert("¡Clic detectado en Entrar!");
+            login();
+        });
+    }
+
+    if (btnRegister) {
+        btnRegister.addEventListener('click', () => {
+            alert("¡Clic detectado en Registrarse!");
+            register();
+        });
+    }
+});
