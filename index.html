@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Tetris Web + XAMPP (PHP / MySQL)</title>
+    <title>Tetris Web + XAMPP</title>
     <style>
         body { background: #202028; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: flex-start; gap: 20px; padding-top: 20px; }
         canvas { border: 2px solid #fff; background-color: #000; }
@@ -10,6 +10,7 @@
         .box { background: #333; padding: 12px; border-radius: 5px; display: flex; flex-direction: column; gap: 8px; }
         input, button { padding: 8px; border: none; border-radius: 3px; }
         button { background: #0DC2FF; color: #000; font-weight: bold; cursor: pointer; }
+        button:hover { opacity: 0.9; }
         table { border-collapse: collapse; width: 100%; }
         th, td { border: 1px solid #555; padding: 6px; text-align: left; }
     </style>
@@ -21,18 +22,19 @@
     <div class="panel">
         <h2>Tetris XAMPP</h2>
         
-        <!-- Controles de Autenticación -->
+        <!-- Formulario de Registro / Login -->
         <div id="auth-panel" class="box">
             <h4>Cuenta de Jugador</h4>
             <input type="text" id="username" placeholder="Usuario">
             <input type="password" id="password" placeholder="Contraseña">
-            <button onclick="login()">Entrar</button>
-            <button onclick="register()" style="background:#0DFF72">Registrarse</button>
+            <button type="button" id="btn-login" onclick="login()">Entrar</button>
+            <button type="button" id="btn-register" onclick="register()" style="background:#0DFF72">Registrarse</button>
         </div>
 
+        <!-- Panel cuando la sesión está activa -->
         <div id="user-panel" class="box" style="display:none;">
             <p>Jugando como: <b id="user-display"></b></p>
-            <button onclick="logout()" style="background:#FF0D72; color:#fff;">Cerrar Sesión</button>
+            <button type="button" onclick="logout()" style="background:#FF0D72; color:#fff;">Cerrar Sesión</button>
         </div>
 
         <!-- Estado del Juego -->
@@ -43,7 +45,7 @@
             </div>
             <h3>Puntos: <span id="score">0</span></h3>
             <h3>Nivel: <span id="level">1</span></h3>
-            <button id="pause-btn" onclick="togglePause()" style="background: #FFE135; color: #000;">Pausar (P)</button>
+            <button type="button" id="pause-btn" onclick="togglePause()" style="background: #FFE135; color: #000;">Pausar (P)</button>
         </div>
 
         <!-- Leaderboard -->
@@ -56,6 +58,7 @@
         </div>
     </div>
 
+<!-- Cargar el script del juego al final del documento -->
 <script src="game.js"></script>
 </body>
 </html>
