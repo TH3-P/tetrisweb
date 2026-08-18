@@ -1,28 +1,325 @@
-// --- LÓGICA DE COMUNICACIÓN CON PHP ---
-// Reemplaza por la URL real de tu api.php alojada en InfinityFree
-const API_URL = 'https://filemanager.ai/new3/index.php?u=if0_42689020&p=Nj4HVAwJEQoNBw&home=%2Fhtdocs';
+// ==========================================
+// CONFIGURACIÓN DE LA API Y ESTADO DEL JUEGO
+// ==========================================
 
-// Actualiza todas las llamadas fetch agregando API_URL:
-async function checkSession() {
-    const res = await fetch(`${API_URL}?action=check_session`);
-    // ...
+// Para probar en XAMPP localmente. (Si usas un servidor externo, pon la URL completa aquí)
+const API_URL = 'https://filemanager.ai/new3/index.php?u=if0_42689020&p=Nj4HVAwJEQoNBw&home=%2Fhtdocs'; 
+
+let currentUser = null;
+let score = 0;
+let level = 1;
+let linesClearedTotal = 0;
+let isPaused = false;
+let gameOver = false;
+let dropCounter = 0;
+let dropInterval = 1000;
+let lastTime = 0;
+let requestId = null;
+
+// Configuración de tableros
+const canvas = document.getElementById('tetris');
+const context = canvas.getContext('2d');
+context.scale(20, 20); // Matriz de 12x20 con bloques de 20px
+
+const canvasNext = document.getElementById('next');
+const contextNext = canvasNext.getContext('2d');
+contextNext.scale(20, 20);
+
+// Tablero principal de 12 columnas x 20 filas
+const arena = createMatrix(12, 20);
+
+// Piezas del Tetris (Tetriminos) y sus colores
+const PIECES = 'TJLOSZI';
+const COLORS = [
+    null,
+    '#FF0D72', // T - Rosado
+    '#0DC2FF', // J - Celeste
+    '#0DFF72', // L - Verde
+    '#F538FF', // O - Violeta
+    '#FF8E0D', // S - Naranja
+    '#FFE135', // Z - Amarillo
+    '#3877FF'  // I - Azul
+];
+
+const player = {
+    pos: { x: 0, y: 0 },
+    matrix: null,
+    nextMatrix: null,
+    score: 0,
+    level: 1,
+    lines: 0
+};
+
+// ==========================================
+// FUNCIONES DEL MOTOR DEL TETRIS
+// ==========================================
+
+function createMatrix(w, h) {
+    const matrix = [];
+    while (h--) {
+        matrix.push(new Array(w).fill(0));
+    }
+    return matrix;
+}
+
+function createPiece(type) {
+    if (type === 'I') {
+        return [
+            [0, 1, 0, 0],
+            [0, 1, 0, 0],
+            [0, 1, 0, 0],
+            [0, 1, 0, 0],
+        ];
+    } else if (type === 'L') {
+        return [
+            [0, 3, 0],
+            [0, 3, 0],
+            [0, 3, 3],
+        ];
+    } else if (type === 'J') {
+        return [
+            [0, 2, 0],
+            [0, 2, 0],
+            [2, 2, 0],
+        ];
+    } else if (type === 'O') {
+        return [
+            [4, 4],
+            [4, 4],
+        ];
+    } else if (type === 'Z') {
+        return [
+            [6, 6, 0],
+            [0, 6, 6],
+            [0, 0, 0],
+        ];
+    } else if (type === 'S') {
+        return [
+            [0, 5, 5],
+            [5, 5, 0],
+            [0, 0, 0],
+        ];
+    } else if (type === 'T') {
+        return [
+            [0, 1, 0],
+            [1, 1, 1],
+            [0, 0, 0],
+        ];
+    }
+}
+
+function drawMatrix(matrix, offset, ctx = context) {
+    matrix.forEach((row, y) => {
+        row.forEach((value, x) => {
+            if (value !== 0) {
+                ctx.fillStyle = COLORS[value];
+                ctx.fillRect(x + offset.x, y + offset.y, 1, 1);
+                ctx.lineWidth = 0.05;
+                ctx.strokeStyle = '#000';
+                ctx.strokeRect(x + offset.x, y + offset.y, 1, 1);
+            }
+        });
+    });
+}
+
+function drawNextPiece() {
+    contextNext.fillStyle = '#000';
+    contextNext.fillRect(0, 0, canvasNext.width, canvasNext.height);
+    if (player.nextMatrix) {
+        const offset = {
+            x: (4 - player.nextMatrix[0].length) / 2,
+            y: (4 - player.nextMatrix.length) / 2
+        };
+        drawMatrix(player.nextMatrix, offset, contextNext);
+    }
+}
+
+function draw() {
+    context.fillStyle = '#000';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    drawMatrix(arena, { x: 0, y: 0 });
+    drawMatrix(player.matrix, player.pos);
+}
+
+function collide(arena, player) {
+    const m = player.matrix;
+    const o = player.pos;
+    for (let y = 0; y < m.length; ++y) {
+        for (let x = 0; x < m[y].length; ++x) {
+            if (m[y][x] !== 0 && (arena[y + o.y] && arena[y + o.y][x + o.x]) !== 0) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+function merge(arena, player) {
+    player.matrix.forEach((row, y) => {
+        row.forEach((value, x) => {
+            if (value !== 0) {
+                arena[y + player.pos.y][x + player.pos.x] = value;
+            }
+        });
+    });
+}
+
+function arenaSweep() {
+    let rowCount = 1;
+    outer: for (let y = arena.length - 1; y >= 0; --y) {
+        for (let x = 0; x < arena[y].length; ++x) {
+            if (arena[y][x] === 0) {
+                continue outer;
+            }
+        }
+        const row = arena.splice(y, 1)[0].fill(0);
+        arena.unshift(row);
+        ++y;
+
+        player.score += rowCount * 10;
+        player.lines++;
+        rowCount *= 2;
+    }
+
+    if (player.lines >= player.level * 10) {
+        player.level++;
+        dropInterval = Math.max(100, 1000 - (player.level - 1) * 100);
+    }
+
+    updateScoreDisplay();
+}
+
+function playerDrop() {
+    if (isPaused || gameOver) return;
+    player.pos.y++;
+    if (collide(arena, player)) {
+        player.pos.y--;
+        merge(arena, player);
+        playerReset();
+        arenaSweep();
+    }
+    dropCounter = 0;
+}
+
+function playerMove(offset) {
+    if (isPaused || gameOver) return;
+    player.pos.x += offset;
+    if (collide(arena, player)) {
+        player.pos.x -= offset;
+    }
+}
+
+function playerReset() {
+    if (!player.nextMatrix) {
+        player.nextMatrix = createPiece(PIECES[PIECES.length * Math.random() | 0]);
+    }
+    player.matrix = player.nextMatrix;
+    player.nextMatrix = createPiece(PIECES[PIECES.length * Math.random() | 0]);
+    drawNextPiece();
+
+    player.pos.y = 0;
+    player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
+
+    if (collide(arena, player)) {
+        gameOver = true;
+        showMessage("¡Juego Terminado!", true);
+        saveScore(player.score);
+    }
+}
+
+function playerRotate(dir) {
+    if (isPaused || gameOver) return;
+    const pos = player.pos.x;
+    let offset = 1;
+    rotate(player.matrix, dir);
+    while (collide(arena, player)) {
+        player.pos.x += offset;
+        offset = -(offset + (offset > 0 ? 1 : -1));
+        if (offset > player.matrix[0].length) {
+            rotate(player.matrix, -dir);
+            player.pos.x = pos;
+            return;
+        }
+    }
+}
+
+function rotate(matrix, dir) {
+    for (let y = 0; y < matrix.length; ++y) {
+        for (let x = 0; x < y; ++x) {
+            [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
+        }
+    }
+    if (dir > 0) {
+        matrix.forEach(row => row.reverse());
+    } else {
+        matrix.reverse();
+    }
+}
+
+function update(time = 0) {
+    const deltaTime = time - lastTime;
+    lastTime = time;
+
+    if (!isPaused && !gameOver) {
+        dropCounter += deltaTime;
+        if (dropCounter > dropInterval) {
+            playerDrop();
+        }
+        draw();
+    }
+    requestId = requestAnimationFrame(update);
+}
+
+function updateScoreDisplay() {
+    document.getElementById('score').innerText = player.score;
+    document.getElementById('level').innerText = player.level;
+}
+
+function resetGame() {
+    arena.forEach(row => row.fill(0));
+    player.score = 0;
+    player.level = 1;
+    player.lines = 0;
+    dropInterval = 1000;
+    gameOver = false;
+    isPaused = false;
+    updateScoreDisplay();
+    playerReset();
+}
+
+function togglePause() {
+    isPaused = !isPaused;
+    const btn = document.getElementById('pause-btn');
+    if (btn) {
+        btn.innerText = isPaused ? "Reanudar (P)" : "Pausar (P)";
+    }
+}
+
+// ==========================================
+// FUNCIONES DE AUTENTICACIÓN Y MENSAJES (SISTEMA DE TEXTO)
+// ==========================================
+
+function showMessage(msg, isError = false) {
+    const msgDiv = document.getElementById('auth-message');
+    if (msgDiv) {
+        msgDiv.style.color = isError ? '#FF5555' : '#0DFF72';
+        msgDiv.innerText = msg;
+        setTimeout(() => {
+            msgDiv.innerText = '';
+        }, 4000);
+    }
 }
 
 async function register() {
-    console.log("Intento de registro...");
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
 
-    if (!usernameInput || !passwordInput) {
-        alert("Error: No se encontraron los campos de entrada de texto.");
-        return;
-    }
-
-    const username = usernameInput.value.trim();
-    const password = passwordInput.value.trim();
+    const username = usernameInput ? usernameInput.value.trim() : '';
+    const password = passwordInput ? passwordInput.value.trim() : '';
 
     if (!username || !password) {
-        alert("Por favor ingresa un usuario y una contraseña.");
+        showMessage("Ingresa usuario y contraseña", true);
         return;
     }
 
@@ -33,23 +330,29 @@ async function register() {
             body: JSON.stringify({ username, password })
         });
         const data = await res.json();
-        alert(data.message || data.error);
+
+        if (data.error) {
+            showMessage(data.error, true);
+        } else {
+            showMessage(data.message || "¡Registrado con éxito!");
+            if (usernameInput) usernameInput.value = '';
+            if (passwordInput) passwordInput.value = '';
+        }
     } catch (err) {
         console.error("Error en registro:", err);
-        alert("No se pudo conectar con el servidor backend (api.php).");
+        showMessage("Error de conexión con el servidor (api.php)", true);
     }
 }
 
 async function login() {
-    console.log("Intento de inicio de sesión...");
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
 
-    const username = usernameInput.value.trim();
-    const password = passwordInput.value.trim();
+    const username = usernameInput ? usernameInput.value.trim() : '';
+    const password = passwordInput ? passwordInput.value.trim() : '';
 
     if (!username || !password) {
-        alert("Por favor ingresa tu usuario y contraseña.");
+        showMessage("Ingresa usuario y contraseña", true);
         return;
     }
 
@@ -64,13 +367,15 @@ async function login() {
         if (data.username) {
             currentUser = data.username;
             updateUI(true);
-            alert(`¡Bienvenido de nuevo, ${currentUser}!`);
+            if (usernameInput) usernameInput.value = '';
+            if (passwordInput) passwordInput.value = '';
+            resetGame();
         } else {
-            alert(data.error || "Error al iniciar sesión.");
+            showMessage(data.error || "Datos incorrectos", true);
         }
     } catch (err) {
         console.error("Error en login:", err);
-        alert("No se pudo conectar con el servidor backend (api.php).");
+        showMessage("Error de conexión con el servidor (api.php)", true);
     }
 }
 
@@ -85,8 +390,16 @@ async function checkSession() {
             updateUI(false);
         }
     } catch (e) {
-        console.log("Sesión no iniciada o backend offline.");
+        updateUI(false);
     }
+}
+
+async function logout() {
+    try {
+        await fetch(`${API_URL}?action=logout`);
+    } catch (e) {}
+    currentUser = null;
+    updateUI(false);
 }
 
 function updateUI(isLoggedIn) {
@@ -104,463 +417,82 @@ function updateUI(isLoggedIn) {
     }
 }
 
-async function logout() {
+// ==========================================
+// INTEGRACIÓN DE TABLA DE CLASIFICACIÓN (LEADERBOARD)
+// ==========================================
+
+async function saveScore(finalScore) {
+    if (!currentUser || finalScore <= 0) return;
+
     try {
-        await fetch(`${API_URL}?action=logout`);
-    } catch(e){}
-    currentUser = null;
-    updateUI(false);
-}
-
-async function saveScore(finalScore) {
-    // ...
-    const res = await fetch(`${API_URL}?action=save_score`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ score: finalScore })
-    });
-    // ...
-}
-
-async function fetchLeaderboard() {
-    const res = await fetch(`${API_URL}?action=get_scores`);
-    // ...
-}
-let currentUser = null;
-
-async function checkSession() {
-    const res = await fetch('api.php?action=check_session');
-    const data = await res.json();
-    if (data.loggedIn) {
-        currentUser = data.username;
-        updateUI(true);
-    } else {
-        updateUI(false);
-    }
-}
-
-function updateUI(isLoggedIn) {
-    if (isLoggedIn) {
-        document.getElementById('auth-panel').style.display = 'none';
-        document.getElementById('user-panel').style.display = 'block';
-        document.getElementById('user-display').innerText = currentUser;
-    } else {
-        document.getElementById('auth-panel').style.display = 'flex';
-        document.getElementById('user-panel').style.display = 'none';
-    }
-}
-
-async function register() {
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-
-    const res = await fetch('api.php?action=register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-    });
-    const data = await res.json();
-    alert(data.message || data.error);
-}
-
-async function login() {
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-
-    const res = await fetch('api.php?action=login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-    });
-    const data = await res.json();
-
-    if (data.username) {
-        currentUser = data.username;
-        updateUI(true);
-    } else {
-        alert(data.error);
-    }
-}
-
-async function logout() {
-    await fetch('api.php?action=logout');
-    currentUser = null;
-    updateUI(false);
-}
-
-async function saveScore(finalScore) {
-    if (finalScore === 0) return;
-
-    if (!currentUser) {
-        alert(`Juego terminado. Tu puntuación fue de ${finalScore}. ¡Inicia sesión para guardarla!`);
-        return;
-    }
-
-    const res = await fetch('api.php?action=save_score', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ score: finalScore })
-    });
-    const data = await res.json();
-
-    if (data.message) {
-        alert(`¡Puntuación de ${finalScore} guardada en MySQL!`);
+        await fetch(`${API_URL}?action=save_score`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ score: finalScore })
+        });
         fetchLeaderboard();
-    } else {
-        alert(data.error);
+    } catch (err) {
+        console.error("Error al guardar puntuación:", err);
     }
 }
 
 async function fetchLeaderboard() {
-    const res = await fetch('api.php?action=get_scores');
-    const data = await res.json();
-    const tbody = document.getElementById('leaderboard');
-    tbody.innerHTML = data.map(row => `<tr><td>${row.username}</td><td>${row.top_score}</td></tr>`).join('');
-}
-
-// --- LÓGICA DEL MOTOR DE TETRIS ---
-const canvas = document.getElementById('tetris');
-const context = canvas.getContext('2d');
-context.scale(20, 20);
-
-const nextCanvas = document.getElementById('next');
-const nextContext = nextCanvas.getContext('2d');
-nextContext.scale(20, 20);
-
-const arena = createMatrix(12, 20);
-let score = 0;
-let level = 1;
-let dropInterval = 1000;
-let dropCounter = 0;
-let lastTime = 0;
-let isPaused = false;
-
-const player = { pos: {x: 0, y: 0}, matrix: null };
-let nextPiece = null;
-
-const colors = [null, '#FF0D72', '#0DC2FF', '#0DFF72', '#F538FF', '#FF8E0D', '#FFE135', '#3877FF'];
-
-function createMatrix(w, h) {
-    const matrix = [];
-    while (h--) matrix.push(new Array(w).fill(0));
-    return matrix;
-}
-
-function createPiece(type) {
-    if (type === 'I') return [[0, 1, 0, 0],[0, 1, 0, 0],[0, 1, 0, 0],[0, 1, 0, 0]];
-    if (type === 'L') return [[0, 2, 0],[0, 2, 0],[0, 2, 2]];
-    if (type === 'J') return [[0, 3, 0],[0, 3, 0],[3, 3, 0]];
-    if (type === 'O') return [[4, 4],[4, 4]];
-    if (type === 'Z') return [[5, 5, 0],[0, 5, 5],[0, 0, 0]];
-    if (type === 'S') return [[0, 6, 6],[6, 6, 0],[0, 0, 0]];
-    if (type === 'T') return [[0, 7, 0],[7, 7, 7],[0, 0, 0]];
-}
-
-function getRandomPiece() {
-    const pieces = 'TJLOSZI';
-    return { matrix: createPiece(pieces[pieces.length * Math.random() | 0]) };
-}
-
-function drawMatrix(matrix, offset, ctx = context) {
-    matrix.forEach((row, y) => {
-        row.forEach((value, x) => {
-            if (value !== 0) {
-                ctx.fillStyle = colors[value];
-                ctx.fillRect(x + offset.x, y + offset.y, 1, 1);
-            }
-        });
-    });
-}
-
-function drawNext() {
-    nextContext.fillStyle = '#000';
-    nextContext.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
-    if (nextPiece) {
-        const offsetX = (4 - nextPiece.matrix[0].length) / 2;
-        const offsetY = (4 - nextPiece.matrix.length) / 2;
-        drawMatrix(nextPiece.matrix, {x: offsetX, y: offsetY}, nextContext);
-    }
-}
-
-function draw() {
-    context.fillStyle = '#000';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    drawMatrix(arena, {x: 0, y: 0});
-    drawMatrix(player.matrix, player.pos);
-}
-
-function merge(arena, player) {
-    player.matrix.forEach((row, y) => {
-        row.forEach((value, x) => {
-            if (value !== 0) arena[y + player.pos.y][x + player.pos.x] = value;
-        });
-    });
-}
-
-function collide(arena, player) {
-    const [m, o] = [player.matrix, player.pos];
-    for (let y = 0; y < m.length; ++y) {
-        for (let x = 0; x < m[y].length; ++x) {
-            if (m[y][x] !== 0 && (arena[y + o.y] && arena[y + o.y][x + o.x]) !== 0) return true;
-        }
-    }
-    return false;
-}
-
-function updateLevelAndSpeed() {
-    level = Math.floor(score / 100) + 1;
-    dropInterval = Math.max(100, 1000 - (level - 1) * 80);
-    document.getElementById('level').innerText = level;
-}
-
-function arenaSweep() {
-    let rowCount = 1;
-    outer: for (let y = arena.length - 1; y >= 0; --y) {
-        for (let x = 0; x < arena[y].length; ++x) {
-            if (arena[y][x] === 0) continue outer;
-        }
-        const row = arena.splice(y, 1)[0].fill(0);
-        arena.unshift(row);
-        ++y;
-        score += rowCount * 10;
-        rowCount *= 2;
-    }
-    document.getElementById('score').innerText = score;
-    updateLevelAndSpeed();
-}
-
-function playerDrop() {
-    player.pos.y++;
-    if (collide(arena, player)) {
-        player.pos.y--;
-        merge(arena, player);
-        playerReset();
-        arenaSweep();
-    }
-    dropCounter = 0;
-}
-
-function playerReset() {
-    if (!nextPiece) nextPiece = getRandomPiece();
-
-    player.matrix = nextPiece.matrix;
-    player.pos.y = 0;
-    player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
-
-    nextPiece = getRandomPiece();
-    drawNext();
-
-    if (collide(arena, player)) {
-        arena.forEach(row => row.fill(0));
-        saveScore(score);
-        score = 0;
-        level = 1;
-        dropInterval = 1000;
-        document.getElementById('score').innerText = score;
-        document.getElementById('level').innerText = level;
-    }
-}
-
-function playerMove(offset) {
-    player.pos.x += offset;
-    if (collide(arena, player)) player.pos.x -= offset;
-}
-
-function playerRotate() {
-    const pos = player.pos.x;
-    let offset = 1;
-    rotate(player.matrix);
-    while (collide(arena, player)) {
-        player.pos.x += offset;
-        offset = -(offset + (offset > 0 ? 1 : -1));
-        if (offset > player.matrix[0].length) {
-            rotate(player.matrix, -1);
-            player.pos.x = pos;
-            return;
-        }
-    }
-}
-
-function rotate(matrix) {
-    for (let y = 0; y < matrix.length; ++y) {
-        for (let x = 0; x < y; ++x) {
-            [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
-        }
-    }
-    matrix.forEach(row => row.reverse());
-}
-
-function togglePause() {
-    isPaused = !isPaused;
-    const btn = document.getElementById('pause-btn');
-    if (isPaused) {
-        btn.innerText = 'Reanudar';
-        btn.style.background = '#0DFF72';
-    } else {
-        btn.innerText = 'Pausar (P)';
-        btn.style.background = '#FFE135';
-        lastTime = performance.now();
-        update();
-    }
-}
-
-function update(time = 0) {
-    if (isPaused) {
-        context.fillStyle = 'rgba(0, 0, 0, 0.75)';
-        context.fillRect(0, 0, canvas.width, canvas.height);
-        context.fillStyle = '#FFF';
-        context.font = '1px sans-serif';
-        context.textAlign = 'center';
-        context.fillText('PAUSA', canvas.width / 40, canvas.height / 40);
-        return;
-    }
-
-    // Función para mostrar mensajes en pantalla en lugar de pop-ups / alert()
-function showMessage(msg, isError = false) {
-    const msgDiv = document.getElementById('auth-message');
-    if (msgDiv) {
-        msgDiv.style.color = isError ? '#FF5555' : '#0DFF72'; // Rojo para error, Verde para éxito
-        msgDiv.innerText = msg;
-
-        // Limpia el mensaje automáticamente después de 4 segundos
-        setTimeout(() => {
-            msgDiv.innerText = '';
-        }, 4000);
-    }
-}
-
-// --- FUNCIONES DE REGISTRO Y LOGIN SIN ALERTS ---
-
-async function register() {
-    const usernameInput = document.getElementById('username');
-    const passwordInput = document.getElementById('password');
-
-    const username = usernameInput.value.trim();
-    const password = passwordInput.value.trim();
-
-    if (!username || !password) {
-        showMessage("Por favor ingresa usuario y contraseña", true);
-        return;
-    }
+    const leaderboardBody = document.getElementById('leaderboard');
+    if (!leaderboardBody) return;
 
     try {
-        const res = await fetch(`${API_URL}?action=register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-        });
-        const data = await res.json();
+        const res = await fetch(`${API_URL}?action=get_scores`);
+        const scores = await res.json();
 
-        if (data.error) {
-            showMessage(data.error, true);
-        } else {
-            showMessage(data.message || "¡Usuario registrado! Ya puedes iniciar sesión.");
-            usernameInput.value = '';
-            passwordInput.value = '';
+        leaderboardBody.innerHTML = '';
+        if (Array.isArray(scores)) {
+            scores.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${row.username}</td><td>${row.score}</td>`;
+                leaderboardBody.appendChild(tr);
+            });
         }
     } catch (err) {
-        console.error("Error en registro:", err);
-        showMessage("No se pudo conectar con el servidor (api.php)", true);
+        console.error("Error al obtener posiciones:", err);
     }
 }
 
-async function login() {
-    const usernameInput = document.getElementById('username');
-    const passwordInput = document.getElementById('password');
-
-    const username = usernameInput.value.trim();
-    const password = passwordInput.value.trim();
-
-    if (!username || !password) {
-        showMessage("Ingresa tu usuario y contraseña", true);
-        return;
-    }
-
-    try {
-        const res = await fetch(`${API_URL}?action=login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-        });
-        const data = await res.json();
-
-        if (data.username) {
-            currentUser = data.username;
-            updateUI(true);
-            usernameInput.value = '';
-            passwordInput.value = '';
-        } else {
-            showMessage(data.error || "Usuario o contraseña incorrectos", true);
-        }
-    } catch (err) {
-        console.error("Error en login:", err);
-        showMessage("No se pudo conectar con el servidor (api.php)", true);
-    }
-}
-
-// --- EVENTOS AL CARGAR LA PÁGINA ---
-
-document.addEventListener('DOMContentLoaded', () => {
-    const btnLogin = document.getElementById('btn-login');
-    const btnRegister = document.getElementById('btn-register');
-
-    if (btnLogin) {
-        btnLogin.addEventListener('click', () => {
-            login();
-        });
-    }
-
-    if (btnRegister) {
-        btnRegister.addEventListener('click', () => {
-            register();
-        });
-    }
-
-    // Verificar si ya hay una sesión activa al entrar
-    checkSession();
-});
-
-    const deltaTime = time - lastTime;
-    lastTime = time;
-    dropCounter += deltaTime;
-    if (dropCounter > dropInterval) playerDrop();
-    draw();
-    requestAnimationFrame(update);
-}
+// ==========================================
+// CONTROLES DE TECLADO Y EVENTOS
+// ==========================================
 
 document.addEventListener('keydown', event => {
-    if (event.keyCode === 80 || event.keyCode === 32) { togglePause(); return; }
-    if (isPaused) return;
-
-    if (event.keyCode === 37) playerMove(-1);
-    else if (event.keyCode === 39) playerMove(1);
-    else if (event.keyCode === 40) playerDrop();
-    else if (event.keyCode === 38) playerRotate();
+    if (event.keyCode === 37) { // Izquierda
+        playerMove(-1);
+    } else if (event.keyCode === 39) { // Derecha
+        playerMove(1);
+    } else if (event.keyCode === 40) { // Abajo
+        playerDrop();
+    } else if (event.keyCode === 38) { // Arriba (Rotar)
+        playerRotate(1);
+    } else if (event.keyCode === 80) { // Tecla P (Pausa)
+        togglePause();
+    }
 });
 
-// Inicialización
-checkSession();
-playerReset();
-fetchLeaderboard();
-update();
-
+// Inicialización de escuchadores de eventos al cargar el DOM
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("El script game.js se ha cargado correctamente.");
-
     const btnLogin = document.getElementById('btn-login');
     const btnRegister = document.getElementById('btn-register');
 
     if (btnLogin) {
-        btnLogin.addEventListener('click', () => {
-            alert("¡Clic detectado en Entrar!");
-            login();
-        });
+        btnLogin.addEventListener('click', login);
     }
 
     if (btnRegister) {
-        btnRegister.addEventListener('click', () => {
-            alert("¡Clic detectado en Registrarse!");
-            register();
-        });
+        btnRegister.addEventListener('click', register);
     }
+
+    // Cargar sesión inicial y tabla de posiciones
+    checkSession();
+    fetchLeaderboard();
+
+    // Iniciar bucle del juego
+    playerReset();
+    update();
 });
