@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetris Boss Edition</title>
+    <style>
+        body {
+            background: #111;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .active {
+            display: flex;
+        }
+
+        /* Estilos Pantalla Autenticación */
+        .auth-card {
+            background: #1e1e2f;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(255, 0, 85, 0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 280px;
+        }
+
+        .auth-card input {
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            background: #2b2b40;
+            color: #fff;
+        }
+
+        /* Estilos Menú Principal */
+        .menu-card {
+            background: #1e1e2f;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(13, 194, 255, 0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 300px;
+        }
+
+        .btn {
+            background: #0dc2ff;
+            color: #000;
+            border: none;
+            padding: 12px;
+            font-weight: bold;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 0.85;
+            transform: scale(1.02);
+        }
+
+        .btn-red {
+            background: #ff2222;
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: #555;
+            color: #fff;
+        }
+
+        /* Layout del Juego */
+        .game-container {
+            display: flex;
+            gap: 20px;
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #333;
+        }
+
+        canvas {
+            border: 2px solid #fff;
+            background: #000;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+
+        th, td {
+            border: 1px solid #444;
+            padding: 4px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. PANTALLA DE LOGIN / REGISTRO -->
+    <div id="screen-auth" class="screen active">
+        <div class="auth-card">
+            <h2>🕹️ Bienvenido a Tetris</h2>
+            <p>Inicia sesión o regístrate para jugar</p>
+            <input type="text" id="username" placeholder="Usuario">
+            <input type="password" id="password" placeholder="Contraseña">
+            <button class="btn" id="btn-login">Iniciar Sesión</button>
+            <button class="btn btn-secondary" id="btn-register">Registrarse</button>
+            <div id="auth-message" style="font-size: 13px; height: 18px;"></div>
+        </div>
+    </div>
+
+    <!-- 2. PANTALLA DE MENÚ PRINCIPAL -->
+    <div id="screen-menu" class="screen">
+        <div class="menu-card">
+            <h1>MENÚ PRINCIPAL</h1>
+            <p>Hola, <span id="user-display" style="color: #FFE135; font-weight: bold;"></span></p>
+            
+            <button class="btn" id="btn-mode-arcade">🎮 Modo Arcade</button>
+            <button class="btn btn-red" id="btn-mode-bossrush">👾 Boss Rush</button>
+            <button class="btn btn-secondary" id="btn-logout" style="margin-top: 15px;">Cerrar Sesión</button>
+        </div>
+    </div>
+
+    <!-- 3. PANTALLA DEL JUEGO -->
+    <div id="screen-game" class="screen">
+        <div style="margin-bottom: 10px; display: flex; gap: 15px; align-items: center;">
+            <button class="btn btn-secondary" id="btn-back-menu">⬅️ Menú</button>
+            <h3 id="mode-title" style="margin: 0; color: #FFE135;"></h3>
+        </div>
+
+        <div class="game-container">
+            <canvas id="tetris" width="240" height="400"></canvas>
+            
+            <div class="sidebar">
+                <h3>Siguiente</h3>
+                <canvas id="next" width="80" height="80"></canvas>
+                
+                <p>Puntos: <span id="score">0</span></p>
+                <p>Nivel: <span id="level">1</span></p>
+
+                <button class="btn" id="pause-btn">Pausar (Espacio)</button>
+
+                <div style="width: 100%;">
+                    <h4>Tabla de Líderes</h4>
+                    <table>
+                        <thead>
+                            <tr><th>Usuario</th><th>Puntos</th></tr>
+                        </thead>
+                        <tbody id="leaderboard"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
