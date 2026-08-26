@@ -3,248 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tetris Boss Rush</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            background: #0f0f1a;
-            color: #ffffff;
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        .screen {
-            display: none;
-            width: 100%;
-            max-width: 900px;
-            padding: 20px;
-            text-align: center;
-        }
-
-        .screen.active {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        /* CARD DE AUTENTICACIÓN Y MENÚ */
-        .card {
-            background: #1e1e2f;
-            border: 2px solid #3877FF;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 0 20px rgba(56, 119, 255, 0.3);
-            width: 100%;
-            max-width: 360px;
-        }
-
-        h1, h2 {
-            margin-top: 0;
-            color: #0DC2FF;
-        }
-
-        input[type="text"], input[type="password"] {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 6px;
-            border: 1px solid #3877FF;
-            background: #12121c;
-            color: #fff;
-        }
-
-        button {
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0;
-            border: none;
-            border-radius: 6px;
-            background: #3877FF;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        button:hover {
-            background: #0DC2FF;
-            color: #000;
-        }
-
-        .btn-boss {
-            background: #FF2222;
-        }
-
-        .btn-boss:hover {
-            background: #FF8E0D;
-            color: #fff;
-        }
-
-        .btn-secondary {
-            background: #444466;
-        }
-
-        .btn-secondary:hover {
-            background: #666688;
-            color: #fff;
-        }
-
-        /* LAYOUT DEL JUEGO */
-        .game-layout {
-            display: flex;
-            gap: 20px;
-            align-items: flex-start;
-            justify-content: center;
-            margin-top: 15px;
-        }
-
-        canvas#tetris {
-            border: 3px solid #3877FF;
-            background-color: #000;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
-        }
-
-        .side-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            min-width: 160px;
-        }
-
-        .panel-box {
-            background: #1e1e2f;
-            border: 1px solid #3877FF;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: center;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 8px;
-            font-size: 14px;
-        }
-
-        th, td {
-            padding: 6px;
-            border-bottom: 1px solid #333;
-        }
-
-        th {
-            color: #FFE135;
-        }
-    </style>
+    <title>Tetris Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-    <!-- 1. PANTALLA DE AUTENTICACIÓN -->
+    <!-- OVERLAY CRT / SCANLINES (puramente decorativo) -->
+    <div class="crt-overlay" aria-hidden="true"></div>
+
+    <!-- PANTALLA DE AUTENTICACIÓN -->
     <div id="screen-auth" class="screen active">
-        <div class="card">
-            <h1>🎮 TETRIS</h1>
-            <div id="auth-message" style="margin-bottom: 10px; font-weight: bold;"></div>
-            <input type="text" id="username" placeholder="Nombre de usuario" autocomplete="off">
+        <div class="auth-card">
+            <h1>TETRIS</h1>
+            <div id="auth-message"></div>
+            <input type="text" id="username" placeholder="Usuario" autocomplete="off">
             <input type="password" id="password" placeholder="Contraseña">
-            <button id="btn-login">INICIAR SESIÓN</button>
-            <button id="btn-register" class="btn-secondary">REGISTRARSE</button>
+            <div class="auth-buttons">
+                <button id="btn-login" class="btn-primary">Iniciar Sesión</button>
+                <button id="btn-register" class="btn-secondary">Registrarse</button>
+            </div>
         </div>
     </div>
 
-    <!-- 2. PANTALLA DE MENÚ PRINCIPAL -->
+    <!-- PANTALLA DE MENÚ PRINCIPAL -->
     <div id="screen-menu" class="screen">
-        <div class="card">
-            <h2>¡Hola, <span id="user-display" style="color: #FFE135;"></span>!</h2>
-            <p>Selecciona un modo de juego:</p>
-            <button id="btn-mode-arcade">🎮 MODO ARCADE</button>
-            <button id="btn-mode-bossrush" class="btn-boss">👾 MODO BOSS RUSH</button>
-            <button id="btn-settings-menu" class="btn-secondary">⚙️ AJUSTES</button>
-            <button id="btn-logout" style="background: #aa2222; margin-top: 15px;">CERRAR SESIÓN</button>
+        <div class="menu-card">
+            <h1>TETRIS</h1>
+            <p>Bienvenido, <strong id="user-display"></strong></p>
+
+            <div class="menu-actions">
+                <button id="btn-mode-arcade" class="btn-mode">🎮 Modo Arcade</button>
+                <button id="btn-mode-bossrush" class="btn-mode">👾 Boss Rush</button>
+                <button id="btn-mode-vs" class="btn-mode">⚔️ Modo VS IA</button>
+                <div class="secondary-actions-row">
+                    <button id="btn-settings-menu" class="btn-secondary">⚙️ Ajustes</button>
+                    <button class="icon-btn btn-mute" title="Silenciar música">🔊</button>
+                </div>
+            </div>
+
+            <div class="leaderboard-section">
+                <h3>🏆 Tabla de Clasificación</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Puntos</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard">
+                        <!-- Se llena mediante JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <button id="btn-logout" class="btn-danger" style="margin-top: 15px;">Cerrar Sesión</button>
         </div>
     </div>
 
-    <!-- 3. PANTALLA DE JUEGO -->
+    <!-- PANTALLA DE JUEGO -->
     <div id="screen-game" class="screen">
-        <h2 id="mode-title" style="margin-bottom: 10px;">🎮 MODO ARCADE</h2>
-        
-        <div class="game-layout">
-            <!-- CANVAS DEL TABLERO -->
-            <canvas id="tetris" width="240" height="400"></canvas>
+        <div class="header-bar">
+            <h2 id="mode-title">🎮 MODO ARCADE</h2>
+            <div class="header-actions">
+                <button class="icon-btn btn-mute" title="Silenciar música">🔊</button>
+                <button id="btn-settings-game" class="icon-btn">⚙️</button>
+                <button id="btn-back-menu" class="icon-btn">🚪</button>
+            </div>
+        </div>
 
-            <!-- PANEL LATERAL -->
-            <div class="side-panel">
-                <div class="panel-box">
-                    <div style="font-size: 12px; color: #aaa;">SIGUIENTE</div>
-                    <canvas id="next" width="80" height="80" style="margin-top: 5px;"></canvas>
+        <div class="game-container">
+            <!-- PANEL DE CONTROLES -->
+            <div class="controls-panel">
+                <h3>Controles</h3>
+                <ul>
+                    <li>Mover <span>← / →</span></li>
+                    <li>Caer <span>↓</span></li>
+                    <li>Rotar <span>↑</span></li>
+                    <li>Drop Rápido <span>Z</span></li>
+                    <li>Pausa <span>Espacio</span></li>
+                </ul>
+            </div>
+
+            <!-- TABLERO PRINCIPAL CON ANCHO Y ALTO FIJOS -->
+            <div class="canvas-frame">
+                <span class="corner tl" aria-hidden="true"></span>
+                <span class="corner tr" aria-hidden="true"></span>
+                <span class="corner bl" aria-hidden="true"></span>
+                <span class="corner br" aria-hidden="true"></span>
+                <canvas id="tetris" width="240" height="400"></canvas>
+            </div>
+
+            <!-- PANEL DE INFORMACIÓN -->
+            <div class="info-panel">
+                <div class="info-box">
+                    <p>Puntos</p>
+                    <h3 id="score">0</h3>
                 </div>
-
-                <div class="panel-box">
-                    <div>PUNTOS: <span id="score" style="color: #0DC2FF; font-weight: bold;">0</span></div>
-                    <div>NIVEL: <span id="level" style="color: #FFE135; font-weight: bold;">1</span></div>
+                <div class="info-box">
+                    <p>Nivel</p>
+                    <h3 id="level">1</h3>
                 </div>
-
-                <div class="panel-box">
-                    <div style="font-size: 12px; color: #FFE135; margin-bottom: 5px;">🏆 TOP 5</div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Usuario</th>
-                                <th>Pts</th>
-                            </tr>
-                        </thead>
-                        <tbody id="leaderboard"></tbody>
-                    </table>
+                <div class="info-box">
+                    <p>Siguiente</p>
+                    <canvas id="next" width="80" height="80"></canvas>
                 </div>
-
                 <button id="pause-btn" class="btn-secondary">Pausar (Espacio)</button>
-                <button id="btn-settings-game" class="btn-secondary">⚙️ Ajustes</button>
-                <button id="btn-back-menu" style="background: #555;">← Menú</button>
             </div>
         </div>
     </div>
 
-    <!-- 4. MODAL DE AJUSTES -->
-    <div id="settings-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); justify-content: center; align-items: center; z-index: 10000;">
-        <div style="background: #1e1e2f; border: 2px solid #0DC2FF; padding: 25px; border-radius: 12px; text-align: center; max-width: 360px; width: 90%; color: #ffffff; box-shadow: 0 0 20px #0DC2FF;">
-            <h2 style="color: #0DC2FF; margin-top: 0;">⚙️ AJUSTES DEL JUEGO</h2>
-            
-            <div style="margin: 25px 0;">
-                <label style="font-weight: bold; font-size: 16px; display: block; margin-bottom: 12px; letter-spacing: 1px;">VEL. D CAÍDA</label>
-                
-                <input type="range" id="speed-slider" min="0.5" max="2" step="0.25" value="1" style="width: 100%; cursor: pointer; accent-color: #0DC2FF;">
-                
-                <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 14px; font-weight: bold; color: #FFE135; padding: 0 2px;">
-                    <span>x0.5</span>
-                    <span style="margin-left: 15px;">x1</span>
-                    <span>x2</span>
-                </div>
-                
-                <div style="margin-top: 10px; font-size: 13px; color: #aaa;">
-                    Velocidad actual: <span id="speed-value-display" style="color: #0DC2FF; font-weight: bold;">x1</span>
-                </div>
+    <!-- MODAL DE AJUSTES -->
+    <div id="settings-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>⚙️ Ajustes</h2>
+            <div class="setting-item">
+                <label for="speed-slider">Velocidad Base:</label>
+                <input type="range" id="speed-slider" min="0.5" max="2" step="0.1" value="1">
+                <span id="speed-value-display">x1</span>
             </div>
-
-            <button id="btn-close-settings" style="background: #0DC2FF; color: #000; border: none; padding: 10px 20px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 10px;">GUARDAR Y CERRAR</button>
+            <div class="setting-item">
+                <label for="volume-slider">🎵 Volumen de Música:</label>
+                <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.45">
+                <span id="volume-value-display">45%</span>
+            </div>
+            <button id="btn-close-settings" class="btn-primary">Guardar y Cerrar</button>
         </div>
     </div>
 
-    <!-- 5. MODAL GAME OVER -->
-    <div id="gameover-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); justify-content: center; align-items: center; z-index: 10000;">
-        <div style="background: #1e1e2f; border: 2px solid #FF2222; padding: 25px; border-radius: 12px; text-align: center; max-width: 350px; width: 90%; color: #ffffff; box-shadow: 0 0 20px #FF2222;">
-            <h1 style="color: #FF2222; margin-top: 0; font-size: 32px; letter-spacing: 2px;">GAME OVER</h1>
-            <p style="margin-bottom: 20px; color: #aaa;">¡Has perdido esta partida!</p>
-            
-            <button id="btn-retry" style="background: #0DC2FF; color: #000; font-weight: bold; margin-bottom: 10px;">🔄 REINTENTAR</button>
-            <button id="btn-gameover-menu" class="btn-secondary">🏠 MENÚ PRINCIPAL</button>
+    <!-- MODAL GAME OVER -->
+    <div id="gameover-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2 style="color: #FF0D72;">💥 FIN DEL JUEGO</h2>
+            <p>¡Te has quedado sin espacio!</p>
+            <div class="modal-buttons">
+                <button id="btn-retry" class="btn-primary">Reintentar</button>
+                <button id="btn-gameover-menu" class="btn-secondary">Menú Principal</button>
+            </div>
         </div>
     </div>
 
+    <script src="audio.js"></script>
     <script src="game.js"></script>
 </body>
 </html>
