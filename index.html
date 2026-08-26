@@ -3,181 +3,245 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tetris Boss Edition</title>
+    <title>Tetris Boss Rush</title>
     <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
         body {
-            background: #111;
-            color: #fff;
-            font-family: Arial, sans-serif;
+            background: #0f0f1a;
+            color: #ffffff;
+            margin: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            margin: 0;
         }
 
         .screen {
             display: none;
-            flex-direction: column;
-            align-items: center;
+            width: 100%;
+            max-width: 900px;
+            padding: 20px;
             text-align: center;
         }
 
-        .active {
-            display: flex;
-        }
-
-        /* Estilos Pantalla Autenticación */
-        .auth-card {
-            background: #1e1e2f;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 0 15px rgba(255, 0, 85, 0.4);
+        .screen.active {
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            width: 280px;
+            align-items: center;
         }
 
-        .auth-card input {
+        /* CARD DE AUTENTICACIÓN Y MENÚ */
+        .card {
+            background: #1e1e2f;
+            border: 2px solid #3877FF;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(56, 119, 255, 0.3);
+            width: 100%;
+            max-width: 360px;
+        }
+
+        h1, h2 {
+            margin-top: 0;
+            color: #0DC2FF;
+        }
+
+        input[type="text"], input[type="password"] {
+            width: 100%;
             padding: 10px;
-            border-radius: 5px;
-            border: none;
-            background: #2b2b40;
+            margin: 10px 0;
+            border-radius: 6px;
+            border: 1px solid #3877FF;
+            background: #12121c;
             color: #fff;
         }
 
-        /* Estilos Menú Principal */
-        .menu-card {
-            background: #1e1e2f;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 0 20px rgba(13, 194, 255, 0.4);
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            width: 300px;
-        }
-
-        .btn {
-            background: #0dc2ff;
-            color: #000;
-            border: none;
+        button {
+            width: 100%;
             padding: 12px;
-            font-weight: bold;
-            font-size: 16px;
+            margin: 8px 0;
+            border: none;
             border-radius: 6px;
+            background: #3877FF;
+            color: white;
+            font-weight: bold;
             cursor: pointer;
             transition: 0.2s;
         }
 
-        .btn:hover {
-            opacity: 0.85;
-            transform: scale(1.02);
+        button:hover {
+            background: #0DC2FF;
+            color: #000;
         }
 
-        .btn-red {
-            background: #ff2222;
+        .btn-boss {
+            background: #FF2222;
+        }
+
+        .btn-boss:hover {
+            background: #FF8E0D;
             color: #fff;
         }
 
         .btn-secondary {
-            background: #555;
+            background: #444466;
+        }
+
+        .btn-secondary:hover {
+            background: #666688;
             color: #fff;
         }
 
-        /* Layout del Juego */
-        .game-container {
+        /* LAYOUT DEL JUEGO */
+        .game-layout {
             display: flex;
             gap: 20px;
-            background: #1a1a1a;
-            padding: 20px;
-            border-radius: 10px;
-            border: 2px solid #333;
+            align-items: flex-start;
+            justify-content: center;
+            margin-top: 15px;
         }
 
-        canvas {
-            border: 2px solid #fff;
-            background: #000;
+        canvas#tetris {
+            border: 3px solid #3877FF;
+            background-color: #000;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
         }
 
-        .sidebar {
+        .side-panel {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 10px;
+            gap: 15px;
+            min-width: 160px;
+        }
+
+        .panel-box {
+            background: #1e1e2f;
+            border: 1px solid #3877FF;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
         }
 
         table {
-            border-collapse: collapse;
             width: 100%;
-            margin-top: 10px;
-            font-size: 12px;
+            border-collapse: collapse;
+            margin-top: 8px;
+            font-size: 14px;
         }
 
         th, td {
-            border: 1px solid #444;
-            padding: 4px;
-            text-align: center;
+            padding: 6px;
+            border-bottom: 1px solid #333;
+        }
+
+        th {
+            color: #FFE135;
         }
     </style>
 </head>
 <body>
 
-    <!-- 1. PANTALLA DE LOGIN / REGISTRO -->
+    <!-- 1. PANTALLA DE AUTENTICACIÓN -->
     <div id="screen-auth" class="screen active">
-        <div class="auth-card">
-            <h2>🕹️ Bienvenido a Tetris</h2>
-            <p>Inicia sesión o regístrate para jugar</p>
-            <input type="text" id="username" placeholder="Usuario">
+        <div class="card">
+            <h1>🎮 TETRIS</h1>
+            <div id="auth-message" style="margin-bottom: 10px; font-weight: bold;"></div>
+            <input type="text" id="username" placeholder="Nombre de usuario" autocomplete="off">
             <input type="password" id="password" placeholder="Contraseña">
-            <button class="btn" id="btn-login">Iniciar Sesión</button>
-            <button class="btn btn-secondary" id="btn-register">Registrarse</button>
-            <div id="auth-message" style="font-size: 13px; height: 18px;"></div>
+            <button id="btn-login">INICIAR SESIÓN</button>
+            <button id="btn-register" class="btn-secondary">REGISTRARSE</button>
         </div>
     </div>
 
     <!-- 2. PANTALLA DE MENÚ PRINCIPAL -->
     <div id="screen-menu" class="screen">
-        <div class="menu-card">
-            <h1>MENÚ PRINCIPAL</h1>
-            <p>Hola, <span id="user-display" style="color: #FFE135; font-weight: bold;"></span></p>
-            
-            <button class="btn" id="btn-mode-arcade">🎮 Modo Arcade</button>
-            <button class="btn btn-red" id="btn-mode-bossrush">👾 Boss Rush</button>
-            <button class="btn btn-secondary" id="btn-logout" style="margin-top: 15px;">Cerrar Sesión</button>
+        <div class="card">
+            <h2>¡Hola, <span id="user-display" style="color: #FFE135;"></span>!</h2>
+            <p>Selecciona un modo de juego:</p>
+            <button id="btn-mode-arcade">🎮 MODO ARCADE</button>
+            <button id="btn-mode-bossrush" class="btn-boss">👾 MODO BOSS RUSH</button>
+            <button id="btn-settings-menu" class="btn-secondary">⚙️ AJUSTES</button>
+            <button id="btn-logout" style="background: #aa2222; margin-top: 15px;">CERRAR SESIÓN</button>
         </div>
     </div>
 
-    <!-- 3. PANTALLA DEL JUEGO -->
+    <!-- 3. PANTALLA DE JUEGO -->
     <div id="screen-game" class="screen">
-        <div style="margin-bottom: 10px; display: flex; gap: 15px; align-items: center;">
-            <button class="btn btn-secondary" id="btn-back-menu">⬅️ Menú</button>
-            <h3 id="mode-title" style="margin: 0; color: #FFE135;"></h3>
-        </div>
-
-        <div class="game-container">
+        <h2 id="mode-title" style="margin-bottom: 10px;">🎮 MODO ARCADE</h2>
+        
+        <div class="game-layout">
+            <!-- CANVAS DEL TABLERO -->
             <canvas id="tetris" width="240" height="400"></canvas>
-            
-            <div class="sidebar">
-                <h3>Siguiente</h3>
-                <canvas id="next" width="80" height="80"></canvas>
-                
-                <p>Puntos: <span id="score">0</span></p>
-                <p>Nivel: <span id="level">1</span></p>
 
-                <button class="btn" id="pause-btn">Pausar (Espacio)</button>
+            <!-- PANEL LATERAL -->
+            <div class="side-panel">
+                <div class="panel-box">
+                    <div style="font-size: 12px; color: #aaa;">SIGUIENTE</div>
+                    <canvas id="next" width="80" height="80" style="margin-top: 5px;"></canvas>
+                </div>
 
-                <div style="width: 100%;">
-                    <h4>Tabla de Líderes</h4>
+                <div class="panel-box">
+                    <div>PUNTOS: <span id="score" style="color: #0DC2FF; font-weight: bold;">0</span></div>
+                    <div>NIVEL: <span id="level" style="color: #FFE135; font-weight: bold;">1</span></div>
+                </div>
+
+                <div class="panel-box">
+                    <div style="font-size: 12px; color: #FFE135; margin-bottom: 5px;">🏆 TOP 5</div>
                     <table>
                         <thead>
-                            <tr><th>Usuario</th><th>Puntos</th></tr>
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Pts</th>
+                            </tr>
                         </thead>
                         <tbody id="leaderboard"></tbody>
                     </table>
                 </div>
+
+                <button id="pause-btn" class="btn-secondary">Pausar (Espacio)</button>
+                <button id="btn-settings-game" class="btn-secondary">⚙️ Ajustes</button>
+                <button id="btn-back-menu" style="background: #555;">← Menú</button>
             </div>
+        </div>
+    </div>
+
+    <!-- 4. MODAL DE AJUSTES -->
+    <div id="settings-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); justify-content: center; align-items: center; z-index: 10000;">
+        <div style="background: #1e1e2f; border: 2px solid #0DC2FF; padding: 25px; border-radius: 12px; text-align: center; max-width: 360px; width: 90%; color: #ffffff; box-shadow: 0 0 20px #0DC2FF;">
+            <h2 style="color: #0DC2FF; margin-top: 0;">⚙️ AJUSTES DEL JUEGO</h2>
+            
+            <div style="margin: 25px 0;">
+                <label style="font-weight: bold; font-size: 16px; display: block; margin-bottom: 12px; letter-spacing: 1px;">VEL. D CAÍDA</label>
+                
+                <input type="range" id="speed-slider" min="0.5" max="2" step="0.25" value="1" style="width: 100%; cursor: pointer; accent-color: #0DC2FF;">
+                
+                <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 14px; font-weight: bold; color: #FFE135; padding: 0 2px;">
+                    <span>x0.5</span>
+                    <span style="margin-left: 15px;">x1</span>
+                    <span>x2</span>
+                </div>
+                
+                <div style="margin-top: 10px; font-size: 13px; color: #aaa;">
+                    Velocidad actual: <span id="speed-value-display" style="color: #0DC2FF; font-weight: bold;">x1</span>
+                </div>
+            </div>
+
+            <button id="btn-close-settings" style="background: #0DC2FF; color: #000; border: none; padding: 10px 20px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 10px;">GUARDAR Y CERRAR</button>
+        </div>
+    </div>
+
+    <!-- 5. MODAL GAME OVER -->
+    <div id="gameover-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); justify-content: center; align-items: center; z-index: 10000;">
+        <div style="background: #1e1e2f; border: 2px solid #FF2222; padding: 25px; border-radius: 12px; text-align: center; max-width: 350px; width: 90%; color: #ffffff; box-shadow: 0 0 20px #FF2222;">
+            <h1 style="color: #FF2222; margin-top: 0; font-size: 32px; letter-spacing: 2px;">GAME OVER</h1>
+            <p style="margin-bottom: 20px; color: #aaa;">¡Has perdido esta partida!</p>
+            
+            <button id="btn-retry" style="background: #0DC2FF; color: #000; font-weight: bold; margin-bottom: 10px;">🔄 REINTENTAR</button>
+            <button id="btn-gameover-menu" class="btn-secondary">🏠 MENÚ PRINCIPAL</button>
         </div>
     </div>
 
