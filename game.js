@@ -1,6 +1,7 @@
 let currentUser = null;
 let gameMode = 'arcade'; // 'arcade' o 'bossrush'
 let dropCounter = 0;
+let baseSpeed = 1000; // Velocidad base elegida en ajustes
 let dropInterval = 1000;
 let lastTime = 0;
 let isPaused = false;
@@ -24,7 +25,7 @@ const PIECES = 'TJLOSZI';
 const COLORS = [
     null,
     '#FF0D72', '#0DC2FF', '#0DFF72', '#F538FF', '#FF8E0D', '#FFE135', '#3877FF',
-    '#777777' // Color 8: Gris para las piezas reflejadas fijadas
+    '#777777'
 ];
 
 const player = {
@@ -49,22 +50,74 @@ const BOSS_RULES = [
     {
         id: 'glitch',
         title: '👾 Glitch',
-        description: '¡La pieza está glitcheada! No sabrás cuál es hasta colocarla.<br>Este jefe solo requiere la mitad de puntos (50 pts).'
+        description: '¡La pieza está glitcheada! No sabrás cuál es hasta colocarla.<br>Este jefe requiere la mitad de puntos (50 pts).'
     },
     {
         id: 'mirror',
         title: '🪞 Reflejo',
-        description: '¡Doble impacto! Al colocar tu pieza, una copia exacta se colocará simétricamente reflejada al otro lado del tablero.'
+        description: 'Al colocar tu pieza, una copia exacta se colocará simétricamente reflejada en gris al otro lado del tablero.<br>¡Este jefe requiere el triple de puntos (300 pts)!'
     },
     {
         id: 'x2',
-        title: '✂️ X2 (Tablero Dividido)',
-        description: 'El tablero está dividido por la mitad.<br>¡Colocar la primera pieza autocompletará el nivel!'
+        title: '👻 Phantoms (Proyección Dual en Caída Horizontal)',
+        description: 'El tablero está dividido por la mitad horizontalmente.<br>Mientras cae la pieza en la mitad superior, su duplicado interactivo se proyecta abajo.'
     }
 ];
 
 // ==========================================
-// GESTIÓN DE PANTALLAS
+// GESTIÓN DE AJUSTES
+// ==========================================
+
+function loadSettings() {
+    const savedMultiplier = localStorage.getItem('tetris_speed_multiplier') || '1';
+    const slider = document.getElementById('speed-slider');
+    const display = document.getElementById('speed-value-display');
+    
+    if (slider) {
+        slider.value = savedMultiplier;
+        updateSpeedFromMultiplier(parseFloat(savedMultiplier));
+    }
+    if (display) {
+        display.innerText = `x${savedMultiplier}`;
+    }
+}
+
+function updateSpeedFromMultiplier(multiplier) {
+    baseSpeed = 1000 / multiplier;
+    dropInterval = Math.max(100, baseSpeed - (player.level - 1) * 100);
+}
+
+function openSettingsModal() {
+    isPaused = true;
+    document.getElementById('settings-modal').style.display = 'flex';
+}
+
+function closeSettingsModal() {
+    const slider = document.getElementById('speed-slider');
+    if (slider) {
+        const val = slider.value;
+        localStorage.setItem('tetris_speed_multiplier', val);
+        updateSpeedFromMultiplier(parseFloat(val));
+    }
+    document.getElementById('settings-modal').style.display = 'none';
+    isPaused = false;
+    lastTime = performance.now();
+}
+
+// ==========================================
+// GESTIÓN DE GAME OVER
+// ==========================================
+
+function showGameOverModal() {
+    document.getElementById('gameover-modal').style.display = 'flex';
+}
+
+function closeGameOverModal() {
+    document.getElementById('gameover-modal').style.display = 'none';
+}
+
+// ==========================================
+// GESTIÓN DE PANTALLAS Y SESIÓN
 // ==========================================
 
 function showScreen(screenId) {
@@ -90,17 +143,13 @@ function startGame(mode) {
     resetGame();
 }
 
-// ==========================================
-// ALMACENAMIENTO LOCAL
-// ==========================================
-
 function getLocalUsers() { return JSON.parse(localStorage.getItem('tetris_users') || '{}'); }
 function saveLocalUsers(users) { localStorage.setItem('tetris_users', JSON.stringify(users)); }
 function getLocalScores() { return JSON.parse(localStorage.getItem('tetris_scores') || '[]'); }
 function saveLocalScores(scores) { localStorage.setItem('tetris_scores', JSON.stringify(scores)); }
 
 // ==========================================
-// MODAL DE TUTORIAL DE JEFE
+// MODAL TUTORIAL
 // ==========================================
 
 function getOrCreateBossModal() {
@@ -131,6 +180,7 @@ function getOrCreateBossModal() {
         document.getElementById('boss-modal-close').addEventListener('click', () => {
             modal.style.display = 'none';
             isPaused = false;
+            lastTime = performance.now();
         });
     }
     return modal;
@@ -202,14 +252,7 @@ function drawMatrix(matrix, offset, ctx = context, isGhost = false, overrideColo
                     ctx.strokeStyle = overrideColor || COLORS[value];
                     ctx.strokeRect(drawX, drawY, 1, 1);
                 } else {
-                    if (overrideColor) {
-                        ctx.fillStyle = overrideColor;
-                    } else if (isBossLevel() && currentBossRule === 'glitch' && ctx === context) {
-                        ctx.fillStyle = '#A0A0A0';
-                    } else {
-                        ctx.fillStyle = COLORS[value];
-                    }
-
+                    ctx.fillStyle = overrideColor || (isBossLevel() && currentBossRule === 'glitch' && ctx === context ? '#A0A0A0' : COLORS[value]);
                     ctx.fillRect(drawX, drawY, 1, 1);
                     ctx.lineWidth = 0.05;
                     ctx.strokeStyle = '#000';
@@ -232,7 +275,7 @@ function drawBossOverlays() {
     } 
     else if (currentBossRule === 'x2') {
         context.strokeStyle = '#FF2222';
-        context.lineWidth = 0.2;
+        context.lineWidth = 0.15;
         context.beginPath();
         context.moveTo(0, 10);
         context.lineTo(12, 10);
@@ -272,16 +315,9 @@ function drawNextPiece() {
 
 function drawMirrorPiece() {
     if (!player.matrix) return;
-    
-    // Invertir horizontalmente la matriz (Efecto Espejo)
     const mirroredMatrix = player.matrix.map(row => [...row].reverse());
-    
-    // Calcular la posición horizontal simétrica opuesta en el tablero (ancho = 12)
     const mirroredX = 12 - player.pos.x - player.matrix[0].length;
-    const mirroredPos = { x: mirroredX, y: player.pos.y };
-
-    // Dibujar la pieza en el tablero de color grisáceo (#777777)
-    drawMatrix(mirroredMatrix, mirroredPos, context, false, '#777777');
+    drawMatrix(mirroredMatrix, { x: mirroredX, y: player.pos.y }, context, false, '#777777');
 }
 
 function draw() {
@@ -294,14 +330,20 @@ function draw() {
         const ghostPos = getGhostPosition();
         if (ghostPos) {
             drawMatrix(player.matrix, ghostPos, context, true);
+            if (isBossLevel() && currentBossRule === 'x2') {
+                drawMatrix(player.matrix, { x: ghostPos.x, y: ghostPos.y + 10 }, context, true);
+            }
         }
         
-        // Renderizar la pieza reflejada activa cayendo en tiempo real
         if (isBossLevel() && currentBossRule === 'mirror') {
             drawMirrorPiece();
         }
 
         drawMatrix(player.matrix, player.pos);
+
+        if (isBossLevel() && currentBossRule === 'x2') {
+            drawMatrix(player.matrix, { x: player.pos.x, y: player.pos.y + 10 });
+        }
     }
 
     drawBossOverlays();
@@ -311,6 +353,7 @@ function collide(arena, playerObj) {
     const m = playerObj.matrix;
     const o = playerObj.pos;
     if (!m) return false;
+
     for (let y = 0; y < m.length; ++y) {
         for (let x = 0; x < m[y].length; ++x) {
             if (m[y][x] !== 0) {
@@ -322,11 +365,11 @@ function collide(arena, playerObj) {
             }
         }
     }
+
     return false;
 }
 
 function merge(arena, player) {
-    // 1. Fusionar la pieza principal del jugador
     player.matrix.forEach((row, y) => {
         row.forEach((value, x) => {
             if (value !== 0) {
@@ -339,7 +382,6 @@ function merge(arena, player) {
         });
     });
 
-    // 2. Si la regla "mirror" está activa, fusionar también la pieza reflejada en gris (valor 8)
     if (isBossLevel() && currentBossRule === 'mirror') {
         const mirroredMatrix = player.matrix.map(row => [...row].reverse());
         const mirroredX = 12 - player.pos.x - player.matrix[0].length;
@@ -350,7 +392,7 @@ function merge(arena, player) {
                     const targetY = y + player.pos.y;
                     const targetX = x + mirroredX;
                     if (targetY >= 0 && targetY < 20 && targetX >= 0 && targetX < 12) {
-                        arena[targetY][targetX] = 8; // Bloque gris para el reflejo
+                        arena[targetY][targetX] = 8;
                     }
                 }
             });
@@ -360,7 +402,7 @@ function merge(arena, player) {
 
 function advanceLevel() {
     player.level++;
-    dropInterval = Math.max(100, 1000 - (player.level - 1) * 100);
+    dropInterval = Math.max(100, baseSpeed - (player.level - 1) * 100);
     arena.forEach(row => row.fill(0));
 
     if (isBossLevel()) {
@@ -384,9 +426,15 @@ function arenaSweep() {
         rowCount *= 2;
     }
 
-    const targetPoints = (isBossLevel() && currentBossRule === 'glitch') 
-        ? (POINTS_PER_LEVEL / 2) 
-        : POINTS_PER_LEVEL;
+    // Cálculo de puntos requeridos según el jefe activo
+    let targetPoints = POINTS_PER_LEVEL;
+    if (isBossLevel()) {
+        if (currentBossRule === 'glitch') {
+            targetPoints = POINTS_PER_LEVEL / 2; // 50 pts
+        } else if (currentBossRule === 'mirror') {
+            targetPoints = POINTS_PER_LEVEL * 3; // 300 pts (el triple)
+        }
+    }
 
     const calculatedLevel = Math.floor(player.score / targetPoints) + 1;
     if (calculatedLevel > player.level) {
@@ -395,23 +443,12 @@ function arenaSweep() {
 
     updateScoreDisplay();
 }
-
 function playerDrop() {
     if (isPaused || gameOver) return;
     player.pos.y++;
     if (collide(arena, player)) {
         player.pos.y--;
         merge(arena, player);
-
-        if (isBossLevel() && currentBossRule === 'x2') {
-            player.score += POINTS_PER_LEVEL;
-            advanceLevel();
-            updateScoreDisplay();
-            playerReset();
-            dropCounter = 0;
-            return;
-        }
-
         playerReset();
         arenaSweep();
     }
@@ -425,16 +462,6 @@ function playerInstantDrop() {
     }
     player.pos.y--;
     merge(arena, player);
-
-    if (isBossLevel() && currentBossRule === 'x2') {
-        player.score += POINTS_PER_LEVEL;
-        advanceLevel();
-        updateScoreDisplay();
-        playerReset();
-        dropCounter = 0;
-        return;
-    }
-
     playerReset();
     arenaSweep();
     dropCounter = 0;
@@ -467,8 +494,8 @@ function playerReset() {
 
     if (collide(arena, player)) {
         gameOver = true;
-        alert("¡Juego Terminado!");
         saveScore(player.score);
+        showGameOverModal();
     }
 }
 
@@ -507,8 +534,12 @@ function update(time = 0) {
         if (dropCounter > dropInterval) {
             playerDrop();
         }
+    }
+    
+    if (document.getElementById('screen-game').classList.contains('active')) {
         draw();
     }
+    
     requestAnimationFrame(update);
 }
 
@@ -521,7 +552,7 @@ function resetGame() {
     arena.forEach(row => row.fill(0));
     player.score = 0;
     player.level = 1;
-    dropInterval = 1000;
+    dropInterval = baseSpeed;
     gameOver = false;
     isPaused = false;
     player.nextMatrix = null;
@@ -550,7 +581,7 @@ function showAuthMessage(msg, isError = false) {
 }
 
 // ==========================================
-// AUTENTICACIÓN
+// AUTENTICACIÓN Y SCOREBOARD
 // ==========================================
 
 function register() {
@@ -643,6 +674,8 @@ document.addEventListener('keydown', event => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+    loadSettings();
+
     document.getElementById('btn-login').addEventListener('click', login);
     document.getElementById('btn-register').addEventListener('click', register);
     document.getElementById('btn-logout').addEventListener('click', logout);
@@ -655,6 +688,34 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('pause-btn').addEventListener('click', togglePause);
+
+    // Eventos de Ajustes
+    const btnSettingsMenu = document.getElementById('btn-settings-menu');
+    if (btnSettingsMenu) btnSettingsMenu.addEventListener('click', openSettingsModal);
+    
+    const btnSettingsGame = document.getElementById('btn-settings-game');
+    if (btnSettingsGame) btnSettingsGame.addEventListener('click', openSettingsModal);
+
+    document.getElementById('btn-close-settings').addEventListener('click', closeSettingsModal);
+
+    const slider = document.getElementById('speed-slider');
+    const display = document.getElementById('speed-value-display');
+    if (slider && display) {
+        slider.addEventListener('input', (e) => {
+            display.innerText = `x${e.target.value}`;
+        });
+    }
+
+    // Eventos de Game Over Modal
+    document.getElementById('btn-retry').addEventListener('click', () => {
+        closeGameOverModal();
+        resetGame();
+    });
+
+    document.getElementById('btn-gameover-menu').addEventListener('click', () => {
+        closeGameOverModal();
+        showScreen('screen-menu');
+    });
 
     checkSession();
     update();
