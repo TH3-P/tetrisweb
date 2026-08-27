@@ -148,6 +148,16 @@ function checkSession() {
     }
 }
 
+function updateCanvasSize() {
+    if (isVsModeActive()) {
+        canvas.width = 480;
+        canvas.height = 400;
+    } else {
+        canvas.width = 240;
+        canvas.height = 400;
+    }
+}
+
 function startGame(mode) {
     gameMode = mode;
     let title = '🎮 MODO ARCADE';
@@ -156,6 +166,7 @@ function startGame(mode) {
     
     document.getElementById('mode-title').innerText = title;
     showScreen('screen-game');
+    updateCanvasSize();
     resetGame();
     MusicEngine.playTrack(mode);
 }
@@ -204,6 +215,8 @@ function setupBossLevel(level) {
     const selectedRule = BOSS_RULES[Math.floor(Math.random() * BOSS_RULES.length)];
     currentBossRule = selectedRule.id;
 
+    updateCanvasSize();
+
     if (currentBossRule === 'vs') {
         initAI();
     }
@@ -249,7 +262,6 @@ function generateDifferentFakePiece(currentMatrix) {
     let selectedType;
     let candidate;
 
-    // Selecciona una pieza que sea estructuralmente diferente a la actual
     do {
         selectedType = otherPieces[Math.floor(Math.random() * otherPieces.length)];
         candidate = createPiece(selectedType);
@@ -420,10 +432,8 @@ function draw() {
         const ghostPos = getGhostPosition(0);
         
         if (ghostPos) {
-            // Silueta fantasma real en el fondo
             drawMatrix(activeDrawMatrix, ghostPos, context, true);
 
-            // Silueta fantasma falsa desalineada (glitch en el fondo)
             if (isBossLevel() && currentBossRule === 'glitch') {
                 const fakeOffset = (player.pos.x > 5) ? -3 : 3;
                 const fakeGhostPos = getGhostPosition(fakeOffset);
@@ -441,13 +451,11 @@ function draw() {
             drawMirrorPiece();
         }
 
-        // Renderizado de la pieza activa
         drawMatrix(activeDrawMatrix, player.pos);
 
-       // SILUETA GLITCH DE UNA PIEZA DISTINTA SOBRE LA PIEZA QUE CAE (SÓLIDA / MISMA OPACIDAD)
-if (isBossLevel() && currentBossRule === 'glitch' && player.fakeMatrix) {
-    drawMatrix(player.fakeMatrix, player.pos, context, false);
-}
+        if (isBossLevel() && currentBossRule === 'glitch' && player.fakeMatrix) {
+            drawMatrix(player.fakeMatrix, player.pos, context, false);
+        }
 
         if (isBossLevel() && currentBossRule === 'phantoms' && player.pos.y + 10 < 20) {
             drawMatrix(activeDrawMatrix, { x: player.pos.x, y: player.pos.y + 10 });
@@ -579,6 +587,7 @@ function advanceLevel() {
         setupBossLevel(player.level);
     } else {
         currentBossRule = null;
+        updateCanvasSize();
     }
 }
 
@@ -1081,9 +1090,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // AQUI SE AGREGO LA REPRODUCCIÓN DE MÚSICA AL REINTENTAR
     document.getElementById('btn-retry').addEventListener('click', () => {
         closeGameOverModal();
         resetGame();
+        MusicEngine.playTrack(gameMode);
     });
 
     document.getElementById('btn-gameover-menu').addEventListener('click', () => {
@@ -1126,7 +1137,6 @@ function setupAudioControls() {
         });
     }
 
-    // Desbloquea el audio con la primera interacción del usuario (política de autoplay)
     const unlockAudio = () => { MusicEngine.ensureContext(); };
     document.addEventListener('pointerdown', unlockAudio, { once: true });
     document.addEventListener('keydown', unlockAudio, { once: true });

@@ -1,7 +1,5 @@
 /* =========================================================
    TETRIS — ARCADE SYNTHWAVE
-   Paleta tomada de las propias piezas del juego para que la
-   interfaz y el tablero se sientan del mismo mundo.
    ========================================================= */
 
 :root {
@@ -216,7 +214,7 @@ body::after {
     margin-top: 10px;
 }
 
-/* ---------- BOTONES (estilo cabinet 3D) ---------- */
+/* ---------- BOTONES ---------- */
 button {
     cursor: pointer;
     border: none;
@@ -345,11 +343,14 @@ button:active {
 
 /* ---------- LAYOUT PRINCIPAL DE JUEGO ---------- */
 .game-container {
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
     display: flex;
+    flex-direction: row;
     justify-content: center;
     align-items: flex-start;
     gap: 22px;
-    flex-wrap: wrap;
 }
 
 /* ---------- PANEL IZQUIERDO: CONTROLES ---------- */
@@ -358,11 +359,12 @@ button:active {
     border: 1px solid var(--panel-line);
     border-radius: 8px;
     padding: 14px 16px;
-    width: 150px;
+    width: 160px;
     color: var(--text-muted);
     font-size: 12px;
     backdrop-filter: blur(6px);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    flex-shrink: 0;
 }
 
 .controls-panel h3 {
@@ -418,6 +420,7 @@ button:active {
         0 0 0 1px rgba(13, 194, 255, 0.12),
         0 0 30px rgba(245, 56, 255, 0.18),
         0 18px 40px rgba(0, 0, 0, 0.55);
+    flex-shrink: 0;
 }
 
 .canvas-frame .corner {
@@ -437,10 +440,7 @@ canvas#tetris {
     border: 2px solid var(--blue);
     border-radius: 4px;
     background-color: #000;
-    width: 240px;
     height: 400px;
-    max-width: 62vw;
-    aspect-ratio: 12 / 20;
     box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.9), 0 0 24px rgba(56, 119, 255, 0.3);
 }
 
@@ -449,7 +449,8 @@ canvas#tetris {
     display: flex;
     flex-direction: column;
     gap: 14px;
-    width: 140px;
+    width: 150px;
+    flex-shrink: 0;
 }
 
 .info-box {
@@ -459,6 +460,9 @@ canvas#tetris {
     border-radius: 8px;
     text-align: center;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .info-box p {
@@ -483,7 +487,6 @@ canvas#next {
     margin-top: 6px;
     width: 80px;
     height: 80px;
-    aspect-ratio: 1 / 1;
     box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.9);
 }
 
@@ -491,6 +494,7 @@ canvas#next {
     background: var(--panel-alt);
     border: 1px solid var(--panel-line);
     box-shadow: 0 3px 0 #08061a;
+    width: 100%;
 }
 #pause-btn:active { box-shadow: 0 1px 0 #08061a; }
 
@@ -658,7 +662,7 @@ input[type="range"]::-moz-range-thumb {
 /* ---------- RESPONSIVE ---------- */
 @media (max-width: 640px) {
     .auth-card h1, .menu-card h1 { font-size: 1.4rem; }
-    .game-container { justify-content: center; }
+    .game-container { flex-wrap: wrap; justify-content: center; }
     .controls-panel { order: 3; width: 100%; max-width: 240px; }
     .info-panel { order: 2; flex-direction: row; flex-wrap: wrap; width: 100%; max-width: 240px; }
     .info-panel .info-box { flex: 1 1 45%; }
