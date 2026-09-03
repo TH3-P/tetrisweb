@@ -1,9 +1,15 @@
+/* =========================================================
+   TETRIMANIA — LÓGICA DE JUEGO CORTADA Y CORREGIDA
+   ========================================================= */
+
 let currentUser = null;
 let gameMode = 'arcade';
 let dropCounter = 0;
 let baseSpeed = 1000;
 let dropInterval = 1000;
 let lastTime = 0;
+let shakeOffsetX = 0;
+let shakeOffsetY = 0;
 let isPaused = false;
 let gameOver = false;
 
@@ -122,8 +128,12 @@ function closeSettingsModal() {
 }
 
 function showGameOverModal() {
-    MusicEngine.stop();
-    MusicEngine.playGameOverJingle();
+    if (typeof FX !== 'undefined') FX.flash('255,13,114', 0.4, 0.6);
+    triggerScreenShake(12, 400);
+    if (typeof MusicEngine !== 'undefined') {
+        MusicEngine.stop();
+        MusicEngine.playGameOverJingle();
+    }
     document.getElementById('gameover-modal').style.display = 'flex';
 }
 
@@ -142,7 +152,7 @@ function checkSession() {
         currentUser = session;
         document.getElementById('user-display').innerText = currentUser;
         showScreen('screen-menu');
-        MusicEngine.playTrack('menu');
+        if (typeof MusicEngine !== 'undefined') MusicEngine.playTrack('menu');
     } else {
         showScreen('screen-auth');
     }
@@ -168,7 +178,7 @@ function startGame(mode) {
     showScreen('screen-game');
     updateCanvasSize();
     resetGame();
-    MusicEngine.playTrack(mode);
+    if (typeof MusicEngine !== 'undefined') MusicEngine.playTrack(mode);
 }
 
 function getLocalUsers() { return JSON.parse(localStorage.getItem('tetris_users') || '{}'); }
@@ -280,6 +290,8 @@ function isVsModeActive() {
 
 function drawMatrix(matrix, offset, ctx = context, isGhost = false, overrideColor = null, offsetX = 0, offsetY = 0) {
     if (!matrix) return;
+    const blockSize = 20;
+
     matrix.forEach((row, y) => {
         row.forEach((value, x) => {
             if (value !== 0) {
@@ -292,18 +304,21 @@ function drawMatrix(matrix, offset, ctx = context, isGhost = false, overrideColo
                     drawY = 19 - (y + offset.y);
                 }
 
+                const px = drawX * blockSize;
+                const py = drawY * blockSize;
+
                 if (isGhost) {
                     ctx.fillStyle = overrideColor || 'rgba(255, 255, 255, 0.35)';
-                    ctx.fillRect(drawX, drawY, 1, 1);
-                    ctx.lineWidth = 0.08;
+                    ctx.fillRect(px, py, blockSize, blockSize);
+                    ctx.lineWidth = 1;
                     ctx.strokeStyle = overrideColor || COLORS[value];
-                    ctx.strokeRect(drawX, drawY, 1, 1);
+                    ctx.strokeRect(px, py, blockSize, blockSize);
                 } else {
                     ctx.fillStyle = overrideColor || COLORS[value];
-                    ctx.fillRect(drawX, drawY, 1, 1);
-                    ctx.lineWidth = 0.05;
-                    ctx.strokeStyle = '#000';
-                    ctx.strokeRect(drawX, drawY, 1, 1);
+                    ctx.fillRect(px, py, blockSize, blockSize);
+                    ctx.lineWidth = 1;
+                    ctx.strokeStyle = '#000000';
+                    ctx.strokeRect(px, py, blockSize, blockSize);
                 }
             }
         });
@@ -315,17 +330,18 @@ function drawBossOverlays() {
 
     if (currentBossRule === 'controls_fog') {
         context.fillStyle = 'rgba(20, 0, 30, 0.85)';
-        context.fillRect(2, 6, 8, 8); 
+        context.fillRect(2 * 20, 6 * 20, 8 * 20, 8 * 20); 
         context.fillStyle = '#FF2222';
-        context.font = '1px sans-serif';
-        context.fillText('NIEBLA', 4, 10);
+        context.font = 'bold 16px sans-serif';
+        context.textAlign = 'center';
+        context.fillText('NIEBLA', 6 * 20, 10 * 20);
     } 
     else if (currentBossRule === 'phantoms') {
         context.strokeStyle = '#FF2222';
-        context.lineWidth = 0.15;
+        context.lineWidth = 3;
         context.beginPath();
-        context.moveTo(0, 10);
-        context.lineTo(12, 10);
+        context.moveTo(0, 10 * 20);
+        context.lineTo(12 * 20, 10 * 20);
         context.stroke();
     }
 }
@@ -345,27 +361,31 @@ function getGhostPosition(offsetX = 0) {
 }
 
 function drawNextPiece() {
-    contextNext.setTransform(1, 0, 0, 1, 0, 0);
-    contextNext.fillStyle = '#000';
+    contextNext.fillStyle = '#000000';
     contextNext.fillRect(0, 0, canvasNext.width, canvasNext.height);
-
-    const scaleNextX = canvasNext.width / 4;
-    const scaleNextY = canvasNext.height / 4;
-    contextNext.scale(scaleNextX, scaleNextY);
 
     if (player.nextMatrix) {
         if (isBossLevel() && currentBossRule === 'glitch') {
             contextNext.fillStyle = '#FF2222';
-            contextNext.font = '2px sans-serif';
-            contextNext.fillText('?', 1.5, 2.5);
+            contextNext.font = 'bold 24px sans-serif';
+            contextNext.textAlign = 'center';
+            contextNext.textBaseline = 'middle';
+            contextNext.fillText('?', canvasNext.width / 2, canvasNext.height / 2);
             return;
         }
 
-        const offset = {
-            x: (4 - player.nextMatrix[0].length) / 2,
-            y: (4 - player.nextMatrix.length) / 2
-        };
-        drawMatrix(player.nextMatrix, offset, contextNext);
+        const size = 18;
+        const offsetX = (canvasNext.width - player.nextMatrix[0].length * size) / 2;
+        const offsetY = (canvasNext.height - player.nextMatrix.length * size) / 2;
+
+        player.nextMatrix.forEach((row, y) => {
+            row.forEach((value, x) => {
+                if (value !== 0) {
+                    contextNext.fillStyle = COLORS[value];
+                    contextNext.fillRect(offsetX + x * size, offsetY + y * size, size - 1, size - 1);
+                }
+            });
+        });
     }
 }
 
@@ -388,7 +408,7 @@ function drawAIDuel() {
     }
 
     context.fillStyle = '#FF2222';
-    context.fillRect(11.9, 0, 0.2, 20);
+    context.fillRect(11.9 * 20, 0, 4, 20 * 20);
 
     drawMatrix(aiArena, { x: 0, y: 0 }, context, false, null, 12, 0);
     if (aiPlayer.matrix) {
@@ -397,33 +417,29 @@ function drawAIDuel() {
 }
 
 function draw() {
-    context.setTransform(1, 0, 0, 1, 0, 0);
     context.fillStyle = '#000000';
     context.fillRect(0, 0, canvas.width, canvas.height);
+    
+    context.save();
+    context.translate(shakeOffsetX, shakeOffsetY);
 
     if (isVsModeActive()) {
-        const scaleX = canvas.width / 24;
-        const scaleY = canvas.height / 20;
-        context.scale(scaleX, scaleY);
-
         drawAIDuel();
 
         if (isPaused && !gameOver) {
             context.fillStyle = 'rgba(0, 0, 0, 0.75)';
-            context.fillRect(0, 0, 24, 20);
+            context.fillRect(0, 0, canvas.width, canvas.height);
 
             context.fillStyle = '#FFE135';
-            context.font = 'bold 2px sans-serif';
+            context.font = 'bold 30px sans-serif';
             context.textAlign = 'center';
             context.textBaseline = 'middle';
-            context.fillText('PAUSA', 12, 10);
+            context.fillText('PAUSA', canvas.width / 2, canvas.height / 2);
         }
+        if (typeof FX !== 'undefined') FX.render(context);
+        context.restore();
         return;
     }
-
-    const scaleX = canvas.width / 12;
-    const scaleY = canvas.height / 20;
-    context.scale(scaleX, scaleY);
 
     drawMatrix(arena, { x: 0, y: 0 });
 
@@ -466,14 +482,17 @@ function draw() {
 
     if (isPaused && !gameOver) {
         context.fillStyle = 'rgba(0, 0, 0, 0.75)';
-        context.fillRect(0, 0, 12, 20);
+        context.fillRect(0, 0, canvas.width, canvas.height);
 
         context.fillStyle = '#FFE135';
-        context.font = 'bold 1.5px sans-serif';
+        context.font = 'bold 24px sans-serif';
         context.textAlign = 'center';
         context.textBaseline = 'middle';
-        context.fillText('PAUSA', 6, 10);
+        context.fillText('PAUSA', canvas.width / 2, canvas.height / 2);
     }
+
+    if (typeof FX !== 'undefined') FX.render(context);
+    context.restore();
 }
 
 function collide(targetArena, playerObj) {
@@ -562,6 +581,11 @@ function sendGarbage(targetGrid, linesCount) {
         newRow[hole] = 0;
         targetGrid.push(newRow);
     }
+
+    if (targetGrid === arena) {
+        if (typeof FX !== 'undefined') FX.flash('255,13,114', 0.25, 0.3);
+        triggerScreenShake(5, 180);
+    }
 }
 
 function updateAIDifficulty() {
@@ -578,33 +602,59 @@ function updateAIDifficulty() {
 
 function advanceLevel() {
     player.level++;
+    // Reiniciamos o recalculamos el score/parámetros para evitar el bucle infinito
+    player.score = 0; 
     dropInterval = Math.max(100, baseSpeed - (player.level - 1) * 100);
     arena.forEach(row => row.fill(0));
 
     updateAIDifficulty();
 
+    // Limpiamos la regla anterior antes de asignar o actualizar
+    currentBossRule = null;
+
+    if (typeof FX !== 'undefined') {
+        FX.flash('255,225,53', 0.3, 0.4);
+        FX.spawnScorePopup(`NIVEL ${player.level}`, 5.5, 9, '#FFE135');
+    }
+    triggerScreenShake(8, 200);
+
     if (isBossLevel()) {
         setupBossLevel(player.level);
     } else {
-        currentBossRule = null;
         updateCanvasSize();
     }
+    
+    updateScoreDisplay();
 }
 
 function arenaSweep() {
     let rowCount = 0;
+    let clearedRows = [];
     outer: for (let y = arena.length - 1; y >= 0; --y) {
         for (let x = 0; x < arena[y].length; ++x) {
             if (arena[y][x] === 0) continue outer;
         }
         const row = arena.splice(y, 1)[0].fill(0);
         arena.unshift(row);
+        clearedRows.push(y);
         ++y;
         rowCount++;
     }
 
     if (rowCount > 0) {
-        player.score += Math.pow(2, rowCount - 1) * 10;
+        const gained = Math.pow(2, rowCount - 1) * 10;
+        player.score += gained;
+        const isTetris = rowCount >= 4;
+        triggerScreenShake(isTetris ? 14 : 6, isTetris ? 280 : 150);
+
+        if (typeof FX !== 'undefined') {
+            FX.spawnLineClearFx(clearedRows);
+            const topRow = Math.min(...clearedRows);
+            FX.spawnScorePopup(`+${gained}`, 5.5, topRow, '#FFE135');
+            if (isTetris) FX.spawnScorePopup('¡TETRIMANIA!', 5.5, Math.max(0, topRow - 1), '#FF0D72');
+            else if (rowCount >= 2) FX.spawnScorePopup(`COMBO x${rowCount}`, 5.5, Math.max(0, topRow - 1), '#0DFF72');
+        }
+
         if (isVsModeActive()) {
             sendGarbage(aiArena, rowCount);
         }
@@ -627,12 +677,25 @@ function arenaSweep() {
     updateScoreDisplay();
 }
 
+function triggerLockFx() {
+    if (typeof FX === 'undefined' || !player.matrix) return;
+    const activeMatrix = player.glitchMatrix || player.matrix;
+    let color = '#EDEBFF';
+    outer: for (const row of activeMatrix) {
+        for (const v of row) {
+            if (v !== 0) { color = COLORS[v]; break outer; }
+        }
+    }
+    FX.spawnLockFx(activeMatrix, player.pos, color);
+}
+
 function playerDrop() {
     if (isPaused || gameOver) return;
     player.pos.y++;
     if (collide(arena, player)) {
         player.pos.y--;
         merge(arena, player);
+        triggerLockFx();
         playerReset();
         arenaSweep();
     }
@@ -641,11 +704,16 @@ function playerDrop() {
 
 function playerInstantDrop() {
     if (isPaused || gameOver) return;
+    const startY = player.pos.y;
     while (!collide(arena, player)) {
         player.pos.y++;
     }
     player.pos.y--;
+    if (typeof FX !== 'undefined' && player.matrix) {
+        FX.spawnDropTrail(player.glitchMatrix || player.matrix, player.pos, startY, player.pos.y, '#0DC2FF');
+    }
     merge(arena, player);
+    triggerLockFx();
     playerReset();
     arenaSweep();
     dropCounter = 0;
@@ -666,6 +734,9 @@ function getRandomPiece() {
 }
 
 function playerReset() {
+    player.glitchMatrix = null;
+    player.fakeMatrix = null;
+
     if (!player.nextMatrix) {
         player.nextMatrix = getRandomPiece();
     }
@@ -678,9 +749,6 @@ function playerReset() {
             row.map(val => (val !== 0 ? Math.floor(Math.random() * 7) + 1 : 0))
         );
         player.fakeMatrix = generateDifferentFakePiece(player.matrix);
-    } else {
-        player.glitchMatrix = null;
-        player.fakeMatrix = null;
     }
 
     drawNextPiece();
@@ -792,7 +860,7 @@ function decideAIMove() {
     let moves = [];
 
     for (let r = 0; r < 4; r++) {
-        let testMatrix = JSON.parse(JSON.stringify(aiPlayer.matrix));
+        let testMatrix = aiPlayer.matrix.map(row => [...row]);
         for (let i = 0; i < r; i++) rotate(testMatrix, 1);
 
         for (let x = -2; x < 12; x++) {
@@ -804,7 +872,7 @@ function decideAIMove() {
             }
             testPos.y--;
 
-            let tempGrid = JSON.parse(JSON.stringify(aiArena));
+            let tempGrid = aiArena.map(row => [...row]);
             testMatrix.forEach((row, dy) => {
                 row.forEach((val, dx) => {
                     if (val !== 0) {
@@ -894,7 +962,8 @@ function update(time = 0) {
     const deltaTime = time - lastTime;
     lastTime = time;
 
-    if (!isPaused && !gameOver && document.getElementById('screen-game').classList.contains('active')) {
+    const gameScreen = document.getElementById('screen-game');
+    if (!isPaused && !gameOver && gameScreen && gameScreen.classList.contains('active')) {
         dropCounter += deltaTime;
         if (dropCounter > dropInterval) {
             playerDrop();
@@ -902,7 +971,7 @@ function update(time = 0) {
         updateAI(deltaTime);
     }
     
-    if (document.getElementById('screen-game').classList.contains('active')) {
+    if (gameScreen && gameScreen.classList.contains('active')) {
         draw();
     }
     
@@ -910,8 +979,18 @@ function update(time = 0) {
 }
 
 function updateScoreDisplay() {
-    document.getElementById('score').innerText = player.score;
-    document.getElementById('level').innerText = player.level;
+    const scoreElem = document.getElementById('score');
+    const levelElem = document.getElementById('level');
+    if (scoreElem) {
+        const prev = parseInt(scoreElem.innerText, 10) || 0;
+        scoreElem.innerText = player.score;
+        if (player.score > prev) {
+            scoreElem.classList.remove('pop');
+            void scoreElem.offsetWidth;
+            scoreElem.classList.add('pop');
+        }
+    }
+    if (levelElem) levelElem.innerText = player.level;
 }
 
 function resetGame() {
@@ -935,9 +1014,7 @@ function resetGame() {
     currentBossRule = null;
     bossTutorialsShown.clear();
     
-    context.setTransform(1, 0, 0, 1, 0, 0);
     context.clearRect(0, 0, canvas.width, canvas.height);
-    contextNext.setTransform(1, 0, 0, 1, 0, 0);
     contextNext.clearRect(0, 0, canvasNext.width, canvasNext.height);
 
     updateScoreDisplay();
@@ -960,13 +1037,18 @@ function togglePause() {
 
 function showAuthMessage(msg, isError = false) {
     const msgDiv = document.getElementById('auth-message');
+    if (!msgDiv) return;
     msgDiv.style.color = isError ? '#FF5555' : '#0DFF72';
     msgDiv.innerText = msg;
 }
 
 function register() {
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value.trim();
+    const usernameElem = document.getElementById('username');
+    const passwordElem = document.getElementById('password');
+    if (!usernameElem || !passwordElem) return;
+
+    const username = usernameElem.value.trim();
+    const password = passwordElem.value.trim();
 
     if (!username || !password) return showAuthMessage("Rellena todos los campos", true);
 
@@ -979,8 +1061,12 @@ function register() {
 }
 
 function login() {
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value.trim();
+    const usernameElem = document.getElementById('username');
+    const passwordElem = document.getElementById('password');
+    if (!usernameElem || !passwordElem) return;
+
+    const username = usernameElem.value.trim();
+    const password = passwordElem.value.trim();
 
     if (!username || !password) return showAuthMessage("Rellena todos los campos", true);
 
@@ -990,7 +1076,7 @@ function login() {
         localStorage.setItem('tetris_session', username);
         document.getElementById('user-display').innerText = currentUser;
         showScreen('screen-menu');
-        MusicEngine.playTrack('menu');
+        if (typeof MusicEngine !== 'undefined') MusicEngine.playTrack('menu');
     } else {
         showAuthMessage("Credenciales incorrectas", true);
     }
@@ -999,7 +1085,7 @@ function login() {
 function logout() {
     localStorage.removeItem('tetris_session');
     currentUser = null;
-    MusicEngine.stop();
+    if (typeof MusicEngine !== 'undefined') MusicEngine.stop();
     showScreen('screen-auth');
 }
 
@@ -1037,7 +1123,8 @@ function fetchLeaderboard() {
 }
 
 document.addEventListener('keydown', event => {
-    if (!document.getElementById('screen-game').classList.contains('active')) return;
+    const gameScreen = document.getElementById('screen-game');
+    if (!gameScreen || !gameScreen.classList.contains('active')) return;
 
     if ([32, 37, 38, 39, 40].includes(event.keyCode)) {
         event.preventDefault();
@@ -1054,33 +1141,25 @@ document.addEventListener('keydown', event => {
 document.addEventListener('DOMContentLoaded', () => {
     loadSettings();
 
-    document.getElementById('btn-login').addEventListener('click', login);
-    document.getElementById('btn-register').addEventListener('click', register);
-    document.getElementById('btn-logout').addEventListener('click', logout);
+    document.getElementById('btn-login')?.addEventListener('click', login);
+    document.getElementById('btn-register')?.addEventListener('click', register);
+    document.getElementById('btn-logout')?.addEventListener('click', logout);
     
-    document.getElementById('btn-mode-arcade').addEventListener('click', () => startGame('arcade'));
-    document.getElementById('btn-mode-bossrush').addEventListener('click', () => startGame('bossrush'));
-    
-    const btnVsMode = document.getElementById('btn-mode-vs');
-    if (btnVsMode) {
-        btnVsMode.addEventListener('click', () => startGame('vs'));
-    }
+    document.getElementById('btn-mode-arcade')?.addEventListener('click', () => startGame('arcade'));
+    document.getElementById('btn-mode-bossrush')?.addEventListener('click', () => startGame('bossrush'));
+    document.getElementById('btn-mode-vs')?.addEventListener('click', () => startGame('vs'));
 
-    document.getElementById('btn-back-menu').addEventListener('click', () => {
+    document.getElementById('btn-back-menu')?.addEventListener('click', () => {
         isPaused = true;
         showScreen('screen-menu');
-        MusicEngine.playTrack('menu');
+        if (typeof MusicEngine !== 'undefined') MusicEngine.playTrack('menu');
     });
 
-    document.getElementById('pause-btn').addEventListener('click', togglePause);
+    document.getElementById('pause-btn')?.addEventListener('click', togglePause);
 
-    const btnSettingsMenu = document.getElementById('btn-settings-menu');
-    if (btnSettingsMenu) btnSettingsMenu.addEventListener('click', openSettingsModal);
-    
-    const btnSettingsGame = document.getElementById('btn-settings-game');
-    if (btnSettingsGame) btnSettingsGame.addEventListener('click', openSettingsModal);
-
-    document.getElementById('btn-close-settings').addEventListener('click', closeSettingsModal);
+    document.getElementById('btn-settings-menu')?.addEventListener('click', openSettingsModal);
+    document.getElementById('btn-settings-game')?.addEventListener('click', openSettingsModal);
+    document.getElementById('btn-close-settings')?.addEventListener('click', closeSettingsModal);
 
     const slider = document.getElementById('speed-slider');
     const display = document.getElementById('speed-value-display');
@@ -1090,17 +1169,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // AQUI SE AGREGO LA REPRODUCCIÓN DE MÚSICA AL REINTENTAR
-    document.getElementById('btn-retry').addEventListener('click', () => {
+    document.getElementById('btn-retry')?.addEventListener('click', () => {
         closeGameOverModal();
         resetGame();
-        MusicEngine.playTrack(gameMode);
+        if (typeof MusicEngine !== 'undefined') MusicEngine.playTrack(gameMode);
     });
 
-    document.getElementById('btn-gameover-menu').addEventListener('click', () => {
+    document.getElementById('btn-gameover-menu')?.addEventListener('click', () => {
         closeGameOverModal();
         showScreen('screen-menu');
-        MusicEngine.playTrack('menu');
+        if (typeof MusicEngine !== 'undefined') MusicEngine.playTrack('menu');
     });
 
     setupAudioControls();
@@ -1109,6 +1187,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setupAudioControls() {
+    if (typeof MusicEngine === 'undefined') return;
+
     const muteIcon = (isMuted) => isMuted ? '🔇' : '🔊';
 
     function syncMuteButtons() {
@@ -1140,4 +1220,22 @@ function setupAudioControls() {
     const unlockAudio = () => { MusicEngine.ensureContext(); };
     document.addEventListener('pointerdown', unlockAudio, { once: true });
     document.addEventListener('keydown', unlockAudio, { once: true });
+}
+
+function triggerScreenShake(intensity = 6, duration = 150) {
+    const startTime = Date.now();
+
+    const shakeInterval = setInterval(() => {
+        const elapsedTime = Date.now() - startTime;
+
+        if (elapsedTime >= duration) {
+            shakeOffsetX = 0;
+            shakeOffsetY = 0;
+            clearInterval(shakeInterval);
+            return;
+        }
+
+        shakeOffsetX = (Math.random() - 0.5) * intensity;
+        shakeOffsetY = (Math.random() - 0.5) * intensity;
+    }, 16);
 }
