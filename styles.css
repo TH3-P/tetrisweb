@@ -110,6 +110,108 @@ body::after {
     100% { transform: translateY(-110vh) translateX(var(--drift, 20px)); opacity: 0; }
 }
 
+/* ---------- DECORACIÓN DE FONDO — PANTALLA DE JUEGO ---------- */
+.game-bg-decor {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.game-bg-decor .retro-sun {
+    position: absolute;
+    left: 50%;
+    bottom: -12vh;
+    width: 62vh;
+    height: 62vh;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 40%,
+        rgba(255, 142, 13, 0.55),
+        rgba(255, 13, 114, 0.4) 45%,
+        rgba(245, 56, 255, 0.16) 70%,
+        transparent 75%);
+    -webkit-mask-image: repeating-linear-gradient(to bottom, #000 0px, #000 4px, transparent 5px, transparent 9px);
+    mask-image: repeating-linear-gradient(to bottom, #000 0px, #000 4px, transparent 5px, transparent 9px);
+    animation: sun-pulse 6s ease-in-out infinite;
+}
+
+@keyframes sun-pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 0.78; }
+}
+
+.game-bg-decor .glow-shape {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.4;
+    animation: shape-float 15s ease-in-out infinite;
+}
+
+.glow-shape.s1 {
+    top: 12%; left: 7%;
+    width: 80px; height: 80px;
+    background: radial-gradient(circle, rgba(13, 194, 255, 0.55), transparent 70%);
+    animation-duration: 16s;
+}
+.glow-shape.s2 {
+    top: 66%; left: 4%;
+    width: 56px; height: 56px;
+    background: radial-gradient(circle, rgba(245, 56, 255, 0.5), transparent 70%);
+    animation-duration: 13s;
+    animation-delay: 2s;
+}
+.glow-shape.s3 {
+    top: 16%; right: 6%;
+    width: 66px; height: 66px;
+    background: radial-gradient(circle, rgba(255, 225, 53, 0.42), transparent 70%);
+    animation-duration: 18s;
+    animation-delay: 1s;
+}
+.glow-shape.s4 {
+    top: 68%; right: 9%;
+    width: 50px; height: 50px;
+    background: radial-gradient(circle, rgba(13, 255, 114, 0.42), transparent 70%);
+    animation-duration: 15s;
+    animation-delay: 3s;
+}
+
+@keyframes shape-float {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(16px, -24px) scale(1.15); }
+}
+
+.game-bg-decor .side-beam {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    animation: beam-pulse 3.4s ease-in-out infinite;
+}
+.side-beam.left {
+    left: 3%;
+    background: linear-gradient(to bottom, transparent, var(--cyan), transparent);
+}
+.side-beam.right {
+    right: 3%;
+    background: linear-gradient(to bottom, transparent, var(--magenta), transparent);
+    animation-delay: 1.2s;
+}
+
+@keyframes beam-pulse {
+    0%, 100% { opacity: 0.1; }
+    50% { opacity: 0.38; }
+}
+
+@media (max-width: 640px) {
+    .game-bg-decor .side-beam,
+    .game-bg-decor .glow-shape.s3,
+    .game-bg-decor .glow-shape.s4 {
+        display: none;
+    }
+}
+
 /* ---------- OVERLAY CRT / SCANLINES ---------- */
 .crt-overlay {
     position: fixed;
